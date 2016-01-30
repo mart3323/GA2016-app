@@ -1,11 +1,12 @@
-import io
+#!/usr/bin/python3
+import os
 from apiclient import discovery
-from googleapiclient.errors import HttpError
+from googleapiclient import errors
 import httplib2
 from oauth2client.client import SignedJwtAssertionCredentials
+from apiclient import http
 
 import json
-import sys
 
 SCOPES = 'https://www.googleapis.com/auth/drive.readonly'
 SERVICE_ACCOUNT_CRED_FILE = ".credentials/m3-GA2016-8a60840cfaba.json"
@@ -18,15 +19,14 @@ with open(SERVICE_ACCOUNT_CRED_FILE) as f:
 credentials = SignedJwtAssertionCredentials(client_email, private_key, SCOPES)
 
 service = discovery.build('drive', 'v3', http=(credentials.authorize(httplib2.Http())))
-# endregion
 
 
 class DriveObject(object):
     @staticmethod
-    def create(id, mimeType):
-        if mimeType == "application/vnd.google-apps.folder":
+    def create(id, mime_type):
+        if mime_type == "application/vnd.google-apps.folder":
             return Folder(id)
-        if mimeType == "application/vnd.google-apps.document":
+        if mime_type == "application/vnd.google-apps.document":
             return File(id)
         else:
             return DriveObject(id)
@@ -35,13 +35,22 @@ class DriveObject(object):
         self.id = id
         self._properties = None
 
+    def download_to(self, path):
+        resource = service.files().get_media(fileId=self.id)
+        file = open(path+self.properties['name'], "wb")
+        media_request = http.MediaIoBaseDownload(file, resource)
+        try:
+            done = False
+            while not done:
+                download_progress, done = media_request.next_chunk()
+        except errors.HttpError as error:
+            print('An error occurred: %s' % error)
+
     @property
     def properties(self):
         if self._properties is None:
             self._properties = service.files().get(fileId=self.id).execute()
         return self._properties
-
-
 
 
 class File(DriveObject):
@@ -55,11 +64,21 @@ class File(DriveObject):
             self._data = service.files().export_media(fileId=self.id, mimeType='application/pdf').execute()
         return self._data
 
+    def download_to(self, path):
+        with open(path+self.properties['name']+".pdf", "wb") as target_file:
+            target_file.write(self.content)
+
 
 class Folder(DriveObject):
     def __init__(self, id):
         super().__init__(id)
         self._children = None
+
+    def download_to(self, path):
+        folder_path = path + self.properties['name'] + "/"
+        os.mkdir(folder_path)
+        for child in self.children:
+            child.download_to(folder_path)
 
     @property
     def children(self):
@@ -93,18 +112,3 @@ class Folder(DriveObject):
         else:
             for drive_object in self._children:
                 yield drive_object
-
-
-if __name__ == "__main__":
-    try:
-        file = Folder("0Bw2tg9yYV6_JaktWYnpXWlhJSGs")
-        for file_obj in file.children:
-            for key in file_obj.properties:
-                print("{0}: {1}".format(key, file_obj.properties[key]))
-            print("----")
-        first = list(file.children)[0]
-        if isinstance(first, File):
-            print(first.content)
-    except HttpError as e:
-        print(e.content, file=sys.stderr)
-
