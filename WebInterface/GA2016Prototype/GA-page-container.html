@@ -1,0 +1,72 @@
+<link rel="import" href="bower_components/polymer/polymer.html">
+<link rel="import" href="bower_components/iron-overlay-behavior/iron-overlay-behavior.html">
+<link rel="import" href="bower_components/iron-fit-behavior/iron-fit-behavior.html">
+<link rel="import" href="bower_components/paper-spinner/paper-spinner.html">
+
+<link rel="import" href="GA-spinner.html">
+
+<dom-module id="GA-page-container">
+
+    <style>
+        #overlay.visible {
+            display: block;
+        }
+        #overlay {
+            display:none;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            background: rgba(0, 0, 0, 0.2);
+            z-index:100;
+        }
+        :host {
+            background-color: yellow;
+            position:relative;
+            width:100%;
+            height:100%;
+        }
+        #page {
+            min-height: 200px;
+        }
+    </style>
+
+    <template>
+            <div id="overlay"></div>
+            <div id="page"></div>
+    </template>
+
+    <script>
+        "use strict";
+        const thisElement = Polymer({
+            is: "GA-page-container",
+
+            properties: {
+                title: {
+                    type: String,
+                    notify: true,
+                    value: "GA2016"
+                }
+            },
+            startLoading: function () {
+                this.$.spinner.show();
+                this.$.overlay.classList.add("visible");
+            },
+            stopLoading: function(){
+                this.$.spinner.hide();
+                this.$.overlay.classList.remove("visible");
+            },
+            load: function (name) {
+                var self = this;
+                self.stopLoading();
+                Polymer.dom(self.$.page).innerHTML = '';
+                Polymer.dom(self.$.page).appendChild(document.createElement(name));
+            },
+            error: function(){
+                this.stopLoading();
+            }
+        });
+
+    </script>
+</dom-module>

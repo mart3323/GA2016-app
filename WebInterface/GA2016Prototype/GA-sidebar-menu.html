@@ -1,0 +1,76 @@
+<link rel="import" href="bower_components/polymer/polymer.html">
+<link rel="import" href="bower_components/iron-ajax/iron-ajax.html">
+<link rel="import" href="GA-menu-dropdown.html">
+<link rel="import" href="GA-menu-item.html">
+
+
+<dom-module id="GA-sidebar-menu">
+    <template>
+        <template is="dom-repeat" items="[[compute_folders(data)]]" id="folders">
+            <GA-menu-dropdown name="[[item.key]]" data="[[item.value]]"></GA-menu-dropdown>
+        </template>
+        <template is="dom-repeat" items="[[compute_files(data)]]" id="files">
+            <GA-menu-item data="[[item.value]]"></GA-menu-item>
+        </template>
+    </template>
+
+    <style>
+
+        GA-menu-item {
+            --menu-item-color: #C8EBFA;
+            --menu-item-color-selected: #91C3EB;
+        }
+    </style>
+
+    <script>
+        "use strict";
+        Polymer({
+            is:"GA-sidebar-menu",
+
+
+            listeners:{
+                'menu-select-item': 'on_select'
+            },
+            properties: [
+                {name:"data"}
+            ],
+            attached: function () {
+                this.set("data",{folders:{"LOADING...":{folders:{}, files:{}}}, files:[]});
+                this.update();
+            },
+            update: function () {
+                var self = this;
+                $.get(GOOGLE_DRIVE_API_LOCATION+"/list.py", function(data){
+                    self.set("data", {folders:[], files:[]});
+                    self.$.folders.render();
+                    self.set("data",data);
+                });
+            },
+            on_select: function(event, details){
+                var options = this.getElementsByTagName("GA-menu-item");
+                for (var i = 0; i < options.length; i++) {
+                    var option = options[i];
+                    if(option !== event.target){
+                        option.deselect();
+                    }
+                }
+            },
+            compute_folders: function(data){
+                return dict_to_array(data.folders);
+            },
+            compute_files: function(data){
+                return dict_to_array(data.files);
+            }
+        });
+
+        function dict_to_array(dict){
+            var arr = [];
+            for(var key in dict){
+                if(dict.hasOwnProperty(key)){
+                    arr.push({key:key, value:dict[key]});
+                }
+            }
+            return arr;
+        }
+    </script>
+</dom-module>

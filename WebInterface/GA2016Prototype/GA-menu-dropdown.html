@@ -1,0 +1,99 @@
+<link rel="import" href="bower_components/polymer/polymer.html">
+<link rel="import" href="bower_components/paper-button/paper-button.html">
+<link rel="import" href="bower_components/iron-collapse/iron-collapse.html">
+<link rel="import" href="bower_components/iron-icon/iron-icon.html">
+
+<dom-module id="GA-menu-dropdown" >
+    <style>
+        #item {
+            background-color:#eee;
+        }
+        iron-collapse {
+            margin-left: 10%;
+            width: 90%;
+            overflow: hidden;
+        }
+        #item {
+            border-radius: 8px;
+            border-width: 1px 2px 2px 1px;
+            border-style: solid;
+            border-color: #CCCCCC #8C8E90 #8C8E90 #CCCCCC;
+            padding: 8px;
+            margin: 8px 8px 0 8px; /* No bottom margin because it doubles up with the collapsed items' */
+        }
+    </style>
+    <template>
+        <div id="item" on-tap="toggle">
+            <iron-icon id="icon" icon="icons:folder"></iron-icon>
+            <span>{{name}}</span>
+        </div>
+
+        <iron-collapse id="collapse">
+            <template is="dom-repeat" items="[[subfolders(data.folders)]]">
+                <GA-menu-dropdown name="[[item.key]]" data="[[item.value]]"></GA-menu-dropdown>
+            </template>
+            <template is="dom-repeat" items="[[subfiles(data.files)]]">
+                <GA-menu-item data="[[item.value]]"></GA-menu-item>
+            </template>
+        </iron-collapse>
+    </template>
+
+    <script>
+        "use strict";
+        Polymer({
+            is:"GA-menu-dropdown",
+
+            properties: {
+                name: {},
+                data: {}
+            },
+
+
+            toggle: function(){
+                var collapse = this.$.collapse;
+
+                if(collapse.opened){
+                    this.close()
+                }else{
+                    this.open();
+                }
+            },
+            subfolders: function () {
+                return dict_to_array(this.data.folders);
+            },
+            subfiles: function () {
+                return dict_to_array(this.data.files);
+            },
+            close: function(){
+                closeAll(this.$.collapse.childNodes);
+                this.$.collapse.opened = false;
+                this.$.icon.icon = "icons:folder"
+            },
+            open: function () {
+                closeAll(this.parentNode.childNodes);
+                this.$.collapse.opened = true;
+                this.$.icon.icon = "icons:folder-open"
+            }
+        });
+
+        function closeAll(collapses) {
+            for (var index = 0; index < collapses.length; index++) {
+                var collapse = collapses[index];
+
+                if (collapse.tagName === 'GA-MENU-DROPDOWN') {
+                    collapse.close();
+                }
+            }
+        }
+
+        function dict_to_array(dict){
+            var arr = [];
+            for(var key in dict){
+                if(dict.hasOwnProperty(key)){
+                    arr.push({key:key, value:dict[key]});
+                }
+            }
+            return arr;
+        }
+    </script>
+</dom-module>

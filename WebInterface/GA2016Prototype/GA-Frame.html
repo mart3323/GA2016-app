@@ -1,0 +1,107 @@
+<link rel="import" href="bower_components/polymer/polymer.html">
+<link rel="import" href="bower_components/paper-drawer-panel/paper-drawer-panel.html">
+<link rel="import" href="bower_components/paper-header-panel/paper-header-panel.html">
+<link rel="import" href="bower_components/paper-toolbar/paper-toolbar.html">
+<link rel="import" href="bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="bower_components/iron-icons/iron-icons.html" />
+<link rel="import" href="bower_components/paper-toast/paper-toast.html" />
+<link rel="import" href="GA-sidebar-menu.html">
+<link rel="import" href="GA-page-container.html">
+
+<dom-module id="GA-Frame">
+    <style>
+        img{
+            background-color: #C8EBFA;
+        }
+        paper-toolbar {
+            background-color:#C8EBFA !important;
+            color: black !important;
+        }
+        paper-button {
+            background-color:#8C8E90;
+            margin:4px;
+        }
+        #title {
+            font-size:2em;
+        }
+        paper-toast {
+            position:absolute;
+            right:100px;
+        }
+        paper-header-panel[drawer] {z-index:100; !important}
+    </style>
+
+    <template>
+        <paper-drawer-panel id="drawerpanel" responsive-width="900px">
+            <paper-header-panel drawer style="z-index:100" >
+                <a href="index.html">
+                    <img src="images/paasukesed.png">
+                </a>
+                <GA-sidebar-menu></GA-sidebar-menu>
+            </paper-header-panel>
+
+            <paper-header-panel mode="waterfall" main style="position:relative">
+                <paper-toolbar>
+                    <paper-icon-button icon="menu" paper-drawer-toggle></paper-icon-button>
+                    <span id="title" class="font-title">asd</span>
+                </paper-toolbar>
+
+                <div id="page" style="white-space: pre"></div>
+                <!--<GA-page-container id="page" default="{{default_page}}"></GA-page-container>-->
+
+                <paper-toast id="toast" text="initial" duration="1500"></paper-toast>
+
+            </paper-header-panel>
+        </paper-drawer-panel>
+    </template>
+
+    <script>
+        "use strict";
+        Polymer({
+            is:"GA-Frame",
+
+            properties: {
+                title: {
+                    type: String,
+                    notify: true,
+                    value: "GA2016"
+                }
+            },
+
+            listeners:{
+                'GA-page-loaded': 'swap_out_page',
+                'GA-page-failed': 'display_error',
+                'submenu-opened': 'close_other_menus',
+                'menu-loading' : 'displaySpinner',
+                'menu-select-item' : 'closeDrawer'
+            },
+            closeDrawer: function () {
+                this.$.drawerpanel.closeDrawer();
+            },
+            displaySpinner: function(){
+                this.$.page.startLoading();
+            },
+            swap_out_page: function(e){
+                var tagName = e.detail.tag;
+                this.$.title.innerHTML = tagName;
+                this.$.page.innerHTML = JSON.stringify(e.detail.content);
+            },
+            display_error: function(){
+                this.$.page.error();
+                this.$.drawerpanel.openDrawer();
+                this.$.toast.setAttribute("text","Failed to load page");
+                this.$.toast.show();
+            },
+            close_other_menus: function(event, detail, sender){
+                $("ga-category").each(
+                        function(){
+                            if($(this) !== sender){
+                                $(this)[0].close()
+                            }
+                        }
+                )
+            }
+        });
+    </script>
+
+</dom-module>

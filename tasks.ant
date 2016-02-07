@@ -1,0 +1,8 @@
+<project name="GA2016-app" basedir="./WebInterface">
+    <target name="vulcanize">
+        <exec executable="/bin/sh">
+            <arg value="-c" />
+            <arg value="vulcanize GA2016Prototype/index.html --inline-css --inline-scripts --strip-comments > compiled/index.html" />
+        </exec>
+    </target>
+</project>

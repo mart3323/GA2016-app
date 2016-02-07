@@ -1,0 +1,95 @@
+<link rel="import" href="bower_components/polymer/polymer.html">
+<link rel="import" href="bower_components/iron-icon/iron-icon.html">
+<link rel="import" href="bower_components/paper-item/paper-item.html">
+
+<dom-module id="GA-menu-item">
+
+    <style is="custom-style">
+        paper-item[active=true] {
+            font-weight: bold;
+        }
+        #item {
+            border-radius: 8px;
+            border-width: 1px 2px 2px 1px;
+            border-style: solid;
+            border-color: #CCCCCC #8C8E90 #8C8E90 #CCCCCC;
+            padding: 8px;
+            margin: 8px 8px 0 8px;
+            background-color:#eee;
+        }
+        #item[active=true] {
+            font-weight: bold;
+            background-color:#ccc
+        }
+        #item[active=true]>span{
+            text-decoration: underline;
+        }
+        #error_icon{
+            color:red;
+            display:none;
+        }
+        #icon{
+            -color:#D88C29;
+            color:#FAA519;
+        }
+    </style>
+
+    <template>
+        <div id="item" on-tap="select">
+            <iron-icon id="icon" icon="icons:description"></iron-icon>
+            <iron-icon id="error_icon" icon="icons:report-problem"></iron-icon>
+            <span>{{data.name}}</span>
+        </div>
+
+
+
+    </template>
+
+    <script>
+        "use strict";
+
+        Polymer({
+            is:"GA-menu-item",
+
+            properties: {
+                data: {},
+                tag:String,
+                defaultselected: {
+                    type: Boolean,
+                    reflectToAttribute:true,
+                    notify: true,
+                    value: false
+                }
+            },
+
+            attached: function(){
+                this.async(function(){if(this.defaultselected){
+                    this.select();
+                }});
+            },
+            isDone: false,
+            select: function(){
+                this.$.item.setAttribute("active",true);
+                this.fire("menu-select-item");
+
+                this.done();
+
+            },
+            done: function(){
+                this.isDone = true;
+                this.$.error_icon.style.display = "none";
+                if(this.$.item.getAttribute("active") == "true"){
+                    this.fire("GA-page-loaded",{content: this.data});
+                }
+            },
+            fail: function(){
+                this.fire("GA-page-failed");
+                this.$.error_icon.style.display = "inline-block";
+            },
+            deselect: function() {
+                this.$.item.setAttribute("active", false);
+            }
+
+        })
+    </script>
+</dom-module>
