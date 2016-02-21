@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title></title>
+        <script src="jquery.js"></script>
+        <script src="socket.io.js"></script>
+        <script src="config.js"></script>
+        <script src="socketClient.js"></script>
+        <script>
+            //TODO: Configure router to redirect "ga2016" to a specific machine
+            var Encryption = function(private_key, public_key){
+                this.private_key = private_key;
+                this.public_key = public_key;
+
+                this.encrypt = function(data){
+                    return "Encrypted - "+this.private_key+" - "+data;
+                };
+                this.decrypt = function(data){
+                    return data.replace("Encrypted - "+this.public_key+" - ","");
+                };
+                this.sign = function(data){
+                    return "Signed - "+this.public_key+" - "+data;
+                };
+                this.verifySignature = function(data){
+                    return data.indexOf("Signed - "+this.public_key+" - " !== -1);
+                };
+            };
+            var Connection = function(){
+                this.broadcast_via_LAN = function(message){
+                    return null;
+                };
+                this.send = function(message){
+                    return {to:function(ip){
+                        return null;
+                    }}
+                };
+                this.onReceiveBroadcast = function(){};
+                this.onReceiveDirectMessage = function(){};
+            };
+            var ClientConnection = function(client_encryption, server_encryption_public_key_only, connection){
+                this.onConnect = connection.onConnect;
+                this.onDisconnect = connection.onDisconnect;
+
+                this.onConnect.add(function(){
+                    connection.send("register", {
+                        name: client_encryption.public_key,
+                        signature: client_encryption.sign(client_encryption.public_key)
+                    });
+                    console.log("Registering");
+                }.bind(this));
+
+                this.send_message_to_server = function(message){
+                    //TODO: send message to server, signed
+                };
+                this.send_message = function(message){
+                    return connection.send(message)
+                };
+                connection.onReceiveBroadcast = function(msg){
+                    for (var i = 0; i < this.onReceiveBroadcast.length; i++) {
+                      this.onReceiveBroadcast[i](msg);
+                    }
+                }.bind(this);
+                connection.onReceiveDirectMessage = function(msg){
+                    for (var i = 0; i < this.onReceiveBroadcast.length; i++) {
+                        this.onReceiveDirectMessage[i](msg);
+                    }
+                }.bind(this);
+                this.onReceiveBroadcast = [];
+                this.onReceiveDirectMessage = [];
+            };
+
+            $(document).ready(function(){
+                var client_encryption = new Encryption("client1secretkey", "client1publickey");
+                var server_encryption = new Encryption(undefined, "server1publickey");
+                var socket = new SocketClient(MESSAGING_SERVER_IP, MESSAGING_SERVER_PORT);
+                var connection = new ClientConnection(client_encryption, server_encryption, socket);
+
+                $("#connected").css("background-color",socket.isConnected() ? "lime" : "salmon");
+                socket.onConnect.add(function(){
+                    $("#connected").css("background-color","lime");
+                });
+                socket.onDisconnect.add(function(){
+                    $("#connected").css("background-color","salmon");
+                });
+            });
+        </script>
+        <script>
+        </script>
+    </head>
+    <body>
+        <span id="connected">connected</span>
+        <table>
+            <tr>
+                <td id="b1"></td>
+                <td id="b2"></td>
+                <td id="b3"></td>
+            </tr>
+            <tr>
+                <td id="b4"></td>
+                <td id="b5"></td>
+                <td id="b6"></td>
+            </tr>
+            <tr>
+                <td id="b7"></td>
+                <td id="b8"></td>
+                <td id="b9"></td>
+            </tr>
+        </table>
+
+    </body>
+</html>

@@ -43,11 +43,10 @@
             <paper-header-panel mode="waterfall" main style="position:relative">
                 <paper-toolbar>
                     <paper-icon-button icon="menu" paper-drawer-toggle></paper-icon-button>
-                    <span id="title" class="font-title">asd</span>
+                    <span id="title" class="font-title">General Assembly 2016</span>
                 </paper-toolbar>
 
                 <div id="page" style="white-space: pre"></div>
-                <!--<GA-page-container id="page" default="{{default_page}}"></GA-page-container>-->
 
                 <paper-toast id="toast" text="initial" duration="1500"></paper-toast>
 
@@ -82,6 +81,7 @@
                 this.$.page.startLoading();
             },
             swap_out_page: function(e){
+                console.log(e.detail);
                 var tagName = e.detail.tag;
                 this.$.title.innerHTML = tagName;
                 this.$.page.innerHTML = JSON.stringify(e.detail.content);
@@ -94,11 +94,11 @@
             },
             close_other_menus: function(event, detail, sender){
                 $("ga-category").each(
-                        function(){
-                            if($(this) !== sender){
-                                $(this)[0].close()
-                            }
+                    function(){
+                        if($(this) !== sender){
+                            $(this)[0].close()
                         }
+                    }
                 )
             }
         });
