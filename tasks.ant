@@ -7,6 +7,9 @@
     </target>
 
     <target name="deploy to localhost" depends="vulcanize">
+        <copy todir="../WebInterface/comms/js">
+            <fileset dir="../nodejs/js"/>
+        </copy>
         <copy todir="/var/www/html/StaticWeb">
             <fileset dir="../out"/>
         </copy>

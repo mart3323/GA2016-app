@@ -1,38 +1,13 @@
-var http = require('http');
-
-var server = http.createServer(function (request, response) {
-    if(request.url == "/"){
-        response.writeHead("Content-type: text/plain");
-        response.write('<script src="https://cdn.socket.io/socket.io-1.4.5.js"></script>');
-        response.end('<script> var socket = io(); </script>');
-        console.log("Page opened");
+var socketServer = require("./js/socketServer.js");
+var Server = new socketServer(7332, function(client, type, msg){
+    if(type == "register"){
+        console.log("A user registered → "+msg);
+        client.emit("registration approved", {});
+    } else {
+        console.log("An unknown message was received → "+type+" → "+msg);
     }
-    console.log(request.url+" opened");
 });
-var port = 7332;
-server.listen(port);
+Server.listenFor(["msg", "pm", "register"]);
+console.log("Server started");
 
 
-var io = require('socket.io')(server);
-
-
-console.log("Server now listening on port "+port);
-
-io.on('connection', function(socket){
-    console.log('a user connected');
-    socket.on('msg', function(msg){
-        if(msg.target == null){
-            io.emit('msg', msg);
-        } else {
-            io.broadcast("pm", msg);
-        }
-    });
-    socket.on('register', function(msg){
-        console.log(msg.name+" registered");
-        // TODO: Verify signature
-        socket.m3_public_key = msg.name;
-    });
-    socket.on("disconnect", function(){
-        console.log("a user disconnected");
-    })
-});

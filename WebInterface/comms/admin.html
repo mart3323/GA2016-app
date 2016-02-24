@@ -3,29 +3,13 @@
     <head>
         <meta charset="UTF-8">
         <title></title>
-        <script src="jquery.js"></script>
-        <script src="socket.io.js"></script>
-        <script src="config.js"></script>
-        <script src="socketClient.js"></script>
+        <script src="extjs/jquery.js"></script>
+        <script src="extjs/socket.io.js"></script>
+        <script src="js/config.js"></script>
+        <script src="js/socketClient.js"></script>
+        <script src="js/encryption.js"></script>
         <script>
             //TODO: Configure router to redirect "ga2016" to a specific machine
-            var Encryption = function(private_key, public_key){
-                this.private_key = private_key;
-                this.public_key = public_key;
-
-                this.encrypt = function(data){
-                    return "Encrypted - "+this.private_key+" - "+data;
-                };
-                this.decrypt = function(data){
-                    return data.replace("Encrypted - "+this.public_key+" - ","");
-                };
-                this.sign = function(data){
-                    return "Signed - "+this.public_key+" - "+data;
-                };
-                this.verifySignature = function(data){
-                    return data.indexOf("Signed - "+this.public_key+" - " !== -1);
-                };
-            };
             var Connection = function(){
                 this.broadcast_via_LAN = function(message){
                     return null;
@@ -39,16 +23,37 @@
                 this.onReceiveDirectMessage = function(){};
             };
             var ClientConnection = function(client_encryption, server_encryption_public_key_only, connection){
-                this.onConnect = connection.onConnect;
-                this.onDisconnect = connection.onDisconnect;
+                this.onConnect = $.Callbacks();
+                this.onDisconnect = $.Callbacks();
 
-                this.onConnect.add(function(){
+                this.registered = false;
+                connection.listenFor("registration approved");
+
+                connection.onConnect.add(function(){
+                    this.onConnect.fire();
+                    if(!this.registered){
+                        this.register();
+                    }
+                }.bind(this));
+
+                connection.onDisconnect.add(function(){
+                    this.onDisconnect.fire();
+                    this.registered = false;
+                }.bind(this));
+
+                connection.onMessage.add(function(type, msg){
+                    if(type == "registration approved"){
+                        this.registered = true;
+                        console.log("Registration approved");
+                    }
+                }.bind(this));
+
+                this.register = function(){
                     connection.send("register", {
                         name: client_encryption.public_key,
                         signature: client_encryption.sign(client_encryption.public_key)
                     });
-                    console.log("Registering");
-                }.bind(this));
+                }.bind(this);
 
                 this.send_message_to_server = function(message){
                     //TODO: send message to server, signed
@@ -56,18 +61,6 @@
                 this.send_message = function(message){
                     return connection.send(message)
                 };
-                connection.onReceiveBroadcast = function(msg){
-                    for (var i = 0; i < this.onReceiveBroadcast.length; i++) {
-                      this.onReceiveBroadcast[i](msg);
-                    }
-                }.bind(this);
-                connection.onReceiveDirectMessage = function(msg){
-                    for (var i = 0; i < this.onReceiveBroadcast.length; i++) {
-                        this.onReceiveDirectMessage[i](msg);
-                    }
-                }.bind(this);
-                this.onReceiveBroadcast = [];
-                this.onReceiveDirectMessage = [];
             };
 
             $(document).ready(function(){
