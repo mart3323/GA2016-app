@@ -5,16 +5,12 @@
         <title></title>
         <script src="extjs/jquery.js"></script>
         <script src="extjs/socket.io.js"></script>
-        <script src="js/config.js"></script>
         <script src="js/External/RSA.js"></script>
-        <script src="js/Physical layer/socketClient.js"></script>
-        <script src="js/Application layer/ApplicationClient.js"></script>
         <script src="js/encryption.js"></script>
         <script>
             $(document).ready(function(){
                 var client_encryption = new JSEncrypt();
-                client_encryption.setPrivateKey(
-                "-----BEGIN RSA PRIVATE KEY-----\
+                var private_key = "-----BEGIN RSA PRIVATE KEY-----\
                 MIIBOwIBAAJBAJgC6p1FA2OcaoI2kqg0pPZouWy3ehQ1KZNvhpzm+9hfQNynop1y\
                 Mck1dQ4KPBMG67qvYuHitX/YB3/EMiR1c1UCAwEAAQJAbwmyVy8SSrD3HCbA+h16\
                 YoQc7k0X36r1s7zDl9kiHepSPsM9ZFOJxT+YgKGk3Rn9EiP8iEdFoPXtKsfswj1g\
@@ -22,38 +18,58 @@
                 rfC5RmliVMHQO1PIIJvWh0tJSa/6hbkCIAZuMosLb6y38e1wsfoCHItxgWRt1Xlf\
                 mv1To910kOvBAiEAjEniih58u3N8UZbqKafesDhZIbFqhzRM1k3GXPxauUkCIQDQ\
                 lSMNQAIOItXMISpAAck5+e46rf0RGEPD8dQOqVn7Lg==\
-                -----END RSA PRIVATE KEY-----"
-                );
-                client_encryption.setPublicKey(
-                "-----BEGIN PUBLIC KEY-----\
+                -----END RSA PRIVATE KEY-----";
+                var public_key = "-----BEGIN PUBLIC KEY-----\
                 MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAJgC6p1FA2OcaoI2kqg0pPZouWy3ehQ1\
                 KZNvhpzm+9hfQNynop1yMck1dQ4KPBMG67qvYuHitX/YB3/EMiR1c1UCAwEAAQ==\
-                -----END PUBLIC KEY-----"
-                );
-                connect_to_server("localhost",7332)
-                .then(register_on_server(1,2)).then(function(){
-                    console.log("Registered");
-                });
-                function connect_to_server(IP, PORT){
+                -----END PUBLIC KEY-----";
+
+                connect_to_server("mart3323-Laptop", 7332, private_key, public_key)
+                .then(serve)
+                .catch(console.warn);
+                function connect_to_server(IP, PORT, private_key, public_key){
                     return new Promise(function(resolve, reject){
-                        var socket = io(IP+":"+PORT);
-                        console.log("client started");
-                        socket.on("connect", function(){console.log("connected");resolve(socket);});
-                        socket.on("reconnect", function(){console.log("connected");resolve(socket);});
+                        var socket = io(IP+":"+PORT, {reconnection:false});
+                        socket.on("connect", function(){resolve(socket);});
+                        socket.on("error", function(){reject("Failed to connect");});
+                        socket.on("connect_error", function(){reject("Failed to connect");});
                         socket.on("Challenge", function(){
-                            console.log("Challenge received, register sent");
-                            socket.emit("Register", {name:1, signature:2});
+                            socket.emit("Register", {name:public_key, signature:1});
                         });
+                        socket.on("Registered",function(isSuccess){
+                            if(isSuccess){
+                                resolve(socket);
+                            } else {
+                                reject("Server did not accept signature");
+                            }
+                        });
+                        socket.connect();
                     });
                 }
-                function register_on_server(private_key, public_key){
-                    return function(socket){
-                        return new Promise(function(resolve, reject){
-                            socket.on("Registered",function(){
-                                resolve(socket);
-                            });
-                        });
-                    }
+                function serve(socket){
+                    $("#f1").click(function(){ socket.emit("Finger", 1); });
+                    $("#f2").click(function(){ socket.emit("Finger", 2); });
+                    $("#f3").click(function(){ socket.emit("Finger", 3); });
+
+                    socket.on("RegisterFinger", function(finger){
+                        var element = $("#fingerCounts td").eq(finger.type-1);
+                        element.append(
+                                $("<span>[ "+finger.id+" ]</span>")
+                                    .data("id",finger.id)
+                                    .click(function(){
+                                        socket.emit("RedactFinger", finger.id);
+                                    })
+                        );
+                    });
+                    socket.on("Redacted Finger", function(id){
+                        console.log("Redacted finger "+id);
+                        $("span").each(function(){
+                            if($(this).data("id") == id){
+                                $(this).remove();
+                            }
+                        })
+                    });
+                    console.log("Ready to serve");
                 }
 
 
@@ -62,6 +78,18 @@
     </head>
     <body>
         <span id="connected">connected</span>
+
+        <table>
+            <tr>
+                <td id="f1">Finger1</td> <td id="f2">Finger2</td> <td id="f3">Finger3</td>
+            </tr>
+            <tr id="fingerCounts">
+                <td></td> <td></td> <td></td>
+            </tr>
+            <tr>
+                <td></td> <td></td> <td></td>
+            </tr>
+        </table>
         <div id="console"></div>
 
     </body>
