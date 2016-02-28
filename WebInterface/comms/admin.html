@@ -6,100 +6,63 @@
         <script src="extjs/jquery.js"></script>
         <script src="extjs/socket.io.js"></script>
         <script src="js/config.js"></script>
-        <script src="js/socketClient.js"></script>
+        <script src="js/External/RSA.js"></script>
+        <script src="js/Physical layer/socketClient.js"></script>
+        <script src="js/Application layer/ApplicationClient.js"></script>
         <script src="js/encryption.js"></script>
         <script>
-            //TODO: Configure router to redirect "ga2016" to a specific machine
-            var Connection = function(){
-                this.broadcast_via_LAN = function(message){
-                    return null;
-                };
-                this.send = function(message){
-                    return {to:function(ip){
-                        return null;
-                    }}
-                };
-                this.onReceiveBroadcast = function(){};
-                this.onReceiveDirectMessage = function(){};
-            };
-            var ClientConnection = function(client_encryption, server_encryption_public_key_only, connection){
-                this.onConnect = $.Callbacks();
-                this.onDisconnect = $.Callbacks();
-
-                this.registered = false;
-                connection.listenFor("registration approved");
-
-                connection.onConnect.add(function(){
-                    this.onConnect.fire();
-                    if(!this.registered){
-                        this.register();
-                    }
-                }.bind(this));
-
-                connection.onDisconnect.add(function(){
-                    this.onDisconnect.fire();
-                    this.registered = false;
-                }.bind(this));
-
-                connection.onMessage.add(function(type, msg){
-                    if(type == "registration approved"){
-                        this.registered = true;
-                        console.log("Registration approved");
-                    }
-                }.bind(this));
-
-                this.register = function(){
-                    connection.send("register", {
-                        name: client_encryption.public_key,
-                        signature: client_encryption.sign(client_encryption.public_key)
-                    });
-                }.bind(this);
-
-                this.send_message_to_server = function(message){
-                    //TODO: send message to server, signed
-                };
-                this.send_message = function(message){
-                    return connection.send(message)
-                };
-            };
-
             $(document).ready(function(){
-                var client_encryption = new Encryption("client1secretkey", "client1publickey");
-                var server_encryption = new Encryption(undefined, "server1publickey");
-                var socket = new SocketClient(MESSAGING_SERVER_IP, MESSAGING_SERVER_PORT);
-                var connection = new ClientConnection(client_encryption, server_encryption, socket);
+                var client_encryption = new JSEncrypt();
+                client_encryption.setPrivateKey(
+                "-----BEGIN RSA PRIVATE KEY-----\
+                MIIBOwIBAAJBAJgC6p1FA2OcaoI2kqg0pPZouWy3ehQ1KZNvhpzm+9hfQNynop1y\
+                Mck1dQ4KPBMG67qvYuHitX/YB3/EMiR1c1UCAwEAAQJAbwmyVy8SSrD3HCbA+h16\
+                YoQc7k0X36r1s7zDl9kiHepSPsM9ZFOJxT+YgKGk3Rn9EiP8iEdFoPXtKsfswj1g\
+                AQIhAOkX7OtTE0dPGa7QV5qhxwRBQEYe2oHaGsBfUbZux2h9AiEApvMo8JOFV9z3\
+                rfC5RmliVMHQO1PIIJvWh0tJSa/6hbkCIAZuMosLb6y38e1wsfoCHItxgWRt1Xlf\
+                mv1To910kOvBAiEAjEniih58u3N8UZbqKafesDhZIbFqhzRM1k3GXPxauUkCIQDQ\
+                lSMNQAIOItXMISpAAck5+e46rf0RGEPD8dQOqVn7Lg==\
+                -----END RSA PRIVATE KEY-----"
+                );
+                client_encryption.setPublicKey(
+                "-----BEGIN PUBLIC KEY-----\
+                MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAJgC6p1FA2OcaoI2kqg0pPZouWy3ehQ1\
+                KZNvhpzm+9hfQNynop1yMck1dQ4KPBMG67qvYuHitX/YB3/EMiR1c1UCAwEAAQ==\
+                -----END PUBLIC KEY-----"
+                );
+                connect_to_server("localhost",7332)
+                .then(register_on_server(1,2)).then(function(){
+                    console.log("Registered");
+                });
+                function connect_to_server(IP, PORT){
+                    return new Promise(function(resolve, reject){
+                        var socket = io(IP+":"+PORT);
+                        console.log("client started");
+                        socket.on("connect", function(){console.log("connected");resolve(socket);});
+                        socket.on("reconnect", function(){console.log("connected");resolve(socket);});
+                        socket.on("Challenge", function(){
+                            console.log("Challenge received, register sent");
+                            socket.emit("Register", {name:1, signature:2});
+                        });
+                    });
+                }
+                function register_on_server(private_key, public_key){
+                    return function(socket){
+                        return new Promise(function(resolve, reject){
+                            socket.on("Registered",function(){
+                                resolve(socket);
+                            });
+                        });
+                    }
+                }
 
-                $("#connected").css("background-color",socket.isConnected() ? "lime" : "salmon");
-                socket.onConnect.add(function(){
-                    $("#connected").css("background-color","lime");
-                });
-                socket.onDisconnect.add(function(){
-                    $("#connected").css("background-color","salmon");
-                });
+
             });
-        </script>
-        <script>
         </script>
     </head>
     <body>
         <span id="connected">connected</span>
-        <table>
-            <tr>
-                <td id="b1"></td>
-                <td id="b2"></td>
-                <td id="b3"></td>
-            </tr>
-            <tr>
-                <td id="b4"></td>
-                <td id="b5"></td>
-                <td id="b6"></td>
-            </tr>
-            <tr>
-                <td id="b7"></td>
-                <td id="b8"></td>
-                <td id="b9"></td>
-            </tr>
-        </table>
+        <div id="console"></div>
 
     </body>
 </html>

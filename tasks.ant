@@ -19,6 +19,9 @@
         <copy todir="/var/www/html/cgi">
             <fileset dir="../cgi-bin"/>
         </copy>
+        <delete>
+            <fileset dir="../WebInterface/comms/js"/>
+        </delete>
         <chmod file="/var/www/html/cgi/**" perm="755" type="both"/>
         <chmod file="/var/www/html/StaticWeb/**" perm="755" type="both"/>
         <chmod file="/var/www/html/comms/**" perm="755" type="both"/>
