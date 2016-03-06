@@ -3,16 +3,13 @@ var Encryption = function(private_key, public_key){
     this.public_key = public_key;
 
     this.encrypt = function(data){
-        return "Encrypted - "+this.private_key+" - "+data;
+        return "Encrypted - "+this.public_key+" - "+JSON.stringify(data);
     };
     this.decrypt = function(data){
-        return data.replace("Encrypted - "+this.public_key+" - ","");
+        return JSON.parse(data.replace("Encrypted - "+this.public_key+" - ",""));
     };
-    this.sign = function(data){
-        return "Signed - "+this.public_key+" - "+data;
-    };
-    this.verifySignature = function(data){
-        return data.indexOf("Signed - "+this.public_key+" - ") === 0;
+    this.verifyChallenge = function(challenge, test){
+        return test === this.sign(challenge);
     };
 };
 

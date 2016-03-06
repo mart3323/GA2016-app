@@ -9,7 +9,6 @@
         <script src="js/encryption.js"></script>
         <script>
             $(document).ready(function(){
-                var client_encryption = new JSEncrypt();
                 var private_key = "-----BEGIN RSA PRIVATE KEY-----\
                 MIIBOwIBAAJBAJgC6p1FA2OcaoI2kqg0pPZouWy3ehQ1KZNvhpzm+9hfQNynop1y\
                 Mck1dQ4KPBMG67qvYuHitX/YB3/EMiR1c1UCAwEAAQJAbwmyVy8SSrD3HCbA+h16\
@@ -24,19 +23,61 @@
                 KZNvhpzm+9hfQNynop1yMck1dQ4KPBMG67qvYuHitX/YB3/EMiR1c1UCAwEAAQ==\
                 -----END PUBLIC KEY-----";
 
-                connect_to_server("mart3323-Laptop", 7332, private_key, public_key)
-                .then(serve)
-                .catch(console.warn);
+                connect_to_server("localhost", 7332, private_key, public_key)
+                    .then(serve)
+                    .catch(function(e){console.warn(e);});
+
+                var server_events = {
+                    RegisterFinger: $.Callbacks(),
+                    RedactedFinger: $.Callbacks(),
+                };
+                var user_events = {
+                    Finger: $.Callbacks(),
+                    Redact: $.Callbacks(),
+                };
+                $("#f1").click(function(){ user_events.Finger.fire(1); });
+                $("#f2").click(function(){ user_events.Finger.fire(2); });
+                $("#f3").click(function(){ user_events.Finger.fire(3); });
+
+                server_events.RegisterFinger.add(function(finger){
+                    var type = finger.type;
+                    var id = finger.id;
+                    $("#fingerCounts").find("td").eq(type-1).append(
+                        $("<span></span>").addClass("finger").text(id).attr("finger_id",id).click(user_events.Redact.fire.bind(this,finger.id))
+                    )
+                });
+                server_events.RedactedFinger.add(function(id){
+                    $("span[finger_id="+id+"]").remove();
+                });
+
+                function injectDebug(socket){
+                    var encryption = new Encryption(private_key, public_key);
+                    var $console = $("#console");
+                    var temp_on = socket.on;
+                    socket.when = function(type, func){
+                        temp_on.apply(socket, [type, function(msg){
+                            $console.prepend($("<div>").addClass("out").hide().text("  → "+type+" "+JSON.stringify(msg)).fadeIn());
+                            func(msg);
+                        }]);
+                    }.bind(socket);
+
+                    var temp_emit = socket.emit;
+                    socket.send = function(type,msg){
+                        $console.prepend($("<div>").addClass("in").hide().text(" ←  "+type+" "+JSON.stringify(msg)).fadeIn());
+                        temp_emit.apply(socket, [type, encryption.encrypt(msg)]);
+                    }.bind(socket);
+                }
+
                 function connect_to_server(IP, PORT, private_key, public_key){
                     return new Promise(function(resolve, reject){
                         var socket = io(IP+":"+PORT, {reconnection:false});
-                        socket.on("connect", function(){resolve(socket);});
-                        socket.on("error", function(){reject("Failed to connect");});
-                        socket.on("connect_error", function(){reject("Failed to connect");});
-                        socket.on("Challenge", function(){
-                            socket.emit("Register", {name:public_key, signature:1});
+                        injectDebug(socket);
+                        socket.when("error", function(){reject("Failed to connect");});
+                        socket.when("connect_error", function(){reject("Failed to connect");});
+                        socket.when("Challenge", function(message){
+                            socket.send("Register", message);
                         });
-                        socket.on("Registered",function(isSuccess){
+                        socket.when("Registered",function(isSuccess){
                             if(isSuccess){
                                 resolve(socket);
                             } else {
@@ -46,35 +87,32 @@
                         socket.connect();
                     });
                 }
+
                 function serve(socket){
-                    $("#f1").click(function(){ socket.emit("Finger", 1); });
-                    $("#f2").click(function(){ socket.emit("Finger", 2); });
-                    $("#f3").click(function(){ socket.emit("Finger", 3); });
+                    user_events.Finger.add(function(n){
+                        if(n == 1 || n == 2 || n == 3){
+                            socket.send("Finger", n);
+                        }
+                    });
+                    user_events.Redact.add(function(id){
+                        socket.send("RedactFinger", id);
+                    });
 
-                    socket.on("RegisterFinger", function(finger){
-                        var element = $("#fingerCounts td").eq(finger.type-1);
-                        element.append(
-                                $("<span>[ "+finger.id+" ]</span>")
-                                    .data("id",finger.id)
-                                    .click(function(){
-                                        socket.emit("RedactFinger", finger.id);
-                                    })
-                        );
-                    });
-                    socket.on("Redacted Finger", function(id){
-                        console.log("Redacted finger "+id);
-                        $("span").each(function(){
-                            if($(this).data("id") == id){
-                                $(this).remove();
-                            }
-                        })
-                    });
-                    console.log("Ready to serve");
+                    socket.when("RegisterFinger", server_events.RegisterFinger.fire);
+                    socket.when("RedactedFinger", server_events.RedactedFinger.fire);
                 }
-
 
             });
         </script>
+        <style>
+            #console .out { color: blue; }
+            #console .in { color: green; }
+            #fingerCounts .finger { border: 1px solid black; margin:2px; }
+
+            #console {
+                white-space: pre;
+            }
+        </style>
     </head>
     <body>
         <span id="connected">connected</span>
