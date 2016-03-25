@@ -4,6 +4,7 @@ var crypto = require("crypto");
 var Encryption = require("./js/encryption");
 
 var io = io_module.listen(7332);
+var random_delay_max = 0;
 
 io.on('connection', function(socket){
     injectDebug(socket);
@@ -21,12 +22,9 @@ function injectDebug(socket) {
     }.bind(socket);
     var temp_emit = socket.emit;
     socket.emit = function(type,msg){
-        setTimeout(function(arguments){
             console.log("  ← "+type+" "+JSON.stringify(msg));
-            temp_emit.apply(this, arguments);
-        }.bind(this, arguments), Math.random()*2000);
+            setTimeout(temp_emit.bind(this, type, msg), Math.random()* random_delay_max);
     }.bind(socket);
-
 }
 
 var private_key = "-----BEGIN RSA PRIVATE KEY-----\
@@ -37,11 +35,11 @@ var private_key = "-----BEGIN RSA PRIVATE KEY-----\
                 rfC5RmliVMHQO1PIIJvWh0tJSa/6hbkCIAZuMosLb6y38e1wsfoCHItxgWRt1Xlf\
                 mv1To910kOvBAiEAjEniih58u3N8UZbqKafesDhZIbFqhzRM1k3GXPxauUkCIQDQ\
                 lSMNQAIOItXMISpAAck5+e46rf0RGEPD8dQOqVn7Lg==\
-                -----END RSA PRIVATE KEY-----";
+                -----END RSA PRIVATE KEY-----".split(" ").join("");
 var public_key = "-----BEGIN PUBLIC KEY-----\
                 MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAJgC6p1FA2OcaoI2kqg0pPZouWy3ehQ1\
                 KZNvhpzm+9hfQNynop1yMck1dQ4KPBMG67qvYuHitX/YB3/EMiR1c1UCAwEAAQ==\
-                -----END PUBLIC KEY-----";
+                -----END PUBLIC KEY-----".split(" ").join("");
 
 var getUniqueId = function(){
     var id = 0;
@@ -50,13 +48,22 @@ var getUniqueId = function(){
 
 var fingers = {};
 
-var log = {
-    received: function(msg){
-        console.log(" →  "+JSON.stringify(msg));
-    },
-    sent: function(msg){
-    }
-};
+var http = require("http");
+var myServer = http.createServer(function(request,response){
+   if(request.url == "/debug"){
+       var numfingers = [0,0,0,0];
+       for(var key in fingers){
+           if(fingers.hasOwnProperty(key) && fingers[key] != undefined){
+               numfingers[fingers[key].type] += 1;
+           }
+       }
+       response.end(JSON.stringify(numfingers));
+   } else {
+       response.end(">"+request.url+"<");
+   }
+});
+myServer.listen(7500);
+
 
 function challenge_and_verify(socket){
     socket.encryption = new Encryption(private_key, public_key);
@@ -96,10 +103,10 @@ function serve(socket){
         reject_on_disconnect(socket, reject);
     });
 }
+//TODO: PDF support for mobile devices
 
 function reject_on_disconnect(socket, reject){
     socket.on("disconnect", function(){
-        log.received("Disconnect");
         reject();
     })
 }

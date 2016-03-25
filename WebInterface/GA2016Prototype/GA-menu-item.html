@@ -70,16 +70,12 @@
             isDone: false,
             select: function(){
                 this.$.item.setAttribute("active",true);
-                this.fire("menu-select-item");
-
-                this.done();
-
+                this.fire("menu-select-item",{path: this.data.name+"."+this.data.type, content: this.data});
             },
             done: function(){
                 this.isDone = true;
                 this.$.error_icon.style.display = "none";
                 if(this.$.item.getAttribute("active") == "true"){
-                    this.fire("GA-page-loaded",{content: this.data});
                 }
             },
             fail: function(){

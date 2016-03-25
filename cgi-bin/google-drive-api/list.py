@@ -25,13 +25,14 @@ class Folder():
 
 
 class File():
-    def __init__(self, name, type, size):
+    def __init__(self, name, type, size, path):
         self.name = name
         self.type = type
         self.size = size
+        self.path = path
 
     def get_json(self):
-        return {"name": self.name, "type": self.type, "size": self.size}
+        return {"name": self.name, "type": self.type, "size": self.size, "path": self.path}
 
     @property
     def filename(self):
@@ -54,7 +55,8 @@ def parseDir(name, dir):
         else:
             name, ext = split_file_extension(sub)
             size = os.path.getsize(dir + sub)
-            files[sub] = File(name, ext, size)
+            if name != "":
+                files[sub] = File(name, ext, size, subdir[:-1])
     return Folder(name, folders, files)
 
 print("Content-type: application/json\n")

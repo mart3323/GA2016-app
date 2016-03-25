@@ -5,8 +5,10 @@
 <link rel="import" href="bower_components/paper-icon-button/paper-icon-button.html">
 <link rel="import" href="bower_components/iron-icons/iron-icons.html" />
 <link rel="import" href="bower_components/paper-toast/paper-toast.html" />
+<link rel="import" href="bower_components/paper-tabs/paper-tabs.html" />
+<link rel="import" href="bower_components/iron-pages/iron-pages.html" />
 <link rel="import" href="GA-sidebar-menu.html">
-<link rel="import" href="GA-page-container.html">
+<link rel="import" href="GA-finger-rules.html">
 
 <dom-module id="GA-Frame">
     <style>
@@ -43,12 +45,21 @@
             <paper-header-panel mode="waterfall" main style="position:relative">
                 <paper-toolbar>
                     <paper-icon-button icon="menu" paper-drawer-toggle></paper-icon-button>
-                    <span id="title" class="font-title">General Assembly 2016</span>
+                    <paper-tabs noink no-slide selected="{{page}}" style="width: 100%">
+                        <paper-tab>Documents</paper-tab>
+                        <paper-tab>Finger rules</paper-tab>
+                        <paper-tab>ITEM THREE</paper-tab>
+                    </paper-tabs>
                 </paper-toolbar>
 
-                <div id="page" style="white-space: pre"></div>
-
-                <paper-toast id="toast" text="initial" duration="1500"></paper-toast>
+                <iron-pages selected="[[page]]" class="fit">
+                    <iron-page> <div id="page" style="white-space: pre"></div> </iron-page>
+                    <iron-page> Test page 2
+                        <GA-finger-rules></GA-finger-rules>
+                    </iron-page>
+                    <iron-page> Test page 3</iron-page>
+                    <paper-toast id="toast" text="initial" duration="1500"></paper-toast>
+                </iron-pages>
 
             </paper-header-panel>
         </paper-drawer-panel>
@@ -64,27 +75,29 @@
                     type: String,
                     notify: true,
                     value: "GA2016"
-                }
+                },
+                page: {value:1}
             },
 
             listeners:{
-                'GA-page-loaded': 'swap_out_page',
                 'GA-page-failed': 'display_error',
                 'submenu-opened': 'close_other_menus',
                 'menu-loading' : 'displaySpinner',
-                'menu-select-item' : 'closeDrawer'
+                'menu-select-item' : 'swap_out_page'
             },
             closeDrawer: function () {
-                this.$.drawerpanel.closeDrawer();
             },
             displaySpinner: function(){
                 this.$.page.startLoading();
             },
             swap_out_page: function(e){
-                console.log(e.detail);
-                var tagName = e.detail.tag;
-                this.$.title.innerHTML = tagName;
-                this.$.page.innerHTML = JSON.stringify(e.detail.content);
+                this.$.drawerpanel.closeDrawer();
+                console.log("Test");
+                console.log(this.$.page);
+                var src = e.detail.content.path;
+                console.log(src);
+                this.$.page.innerHTML = "<iframe src='/cgi/google-drive-api/"+ src +"' width='100%' height='100%'></iframe>";
+                console.log(this.$.page);
             },
             display_error: function(){
                 this.$.page.error();

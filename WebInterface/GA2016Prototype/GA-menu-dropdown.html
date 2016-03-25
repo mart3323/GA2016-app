@@ -43,12 +43,18 @@
         Polymer({
             is:"GA-menu-dropdown",
 
+            listeners:{
+                'menu-select-item' : 'selectItem'
+            },
             properties: {
                 name: {},
                 data: {}
             },
 
 
+            selectItem: function(e){
+                e.detail.path = this.name+"/"+e.detail.path;
+            },
             toggle: function(){
                 var collapse = this.$.collapse;
 
