@@ -9,6 +9,7 @@
 
         #fingers td {
             height:48px;
+            color: blue;
         }
         paper-icon-button.redacting {
             color:red !important;
@@ -25,7 +26,6 @@
 
     <script src="../extjs/jquery.js"></script>
     <script src="../extjs/socket.io.js"></script>
-    <script src="../../nodejs/js/encryption.js"></script>
     <script src="../../nodejs/js/Fingers.js"></script>
 
     <template>
@@ -86,7 +86,6 @@
 
 
         function injectDebug(socket){
-            var encryption = new Encryption(private_key, public_key);
             var $console = $(this.$.console);
             console.log("Debug applied to");
             console.log($console);

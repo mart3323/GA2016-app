@@ -55,6 +55,7 @@ function challenge_and_verify(socket){
             var valid = Keys[name] != undefined;
             socket.emit("Registered", valid);
             if(valid) {
+                socket.m3_name = name;
                 socket.m3_admin = Keys[name].admin;
                 resolve(socket);
             }
@@ -67,6 +68,7 @@ function serveAdmin(socket){
     return reject_on_disconnect(socket);
 }
 function serveUser(socket){
+    send_finger_state(socket);
     socket.on("Finger", function(type){
         var id = getUniqueId();
         if(1 == type || 2 == type || 3 == type){
@@ -101,14 +103,19 @@ function reject_on_disconnect(socket){
         })
     });
 }
+
+var send_finger_state = function (sock) {
+    if (sock.m3_admin) {
+        sock.emit("FingerUpdate", fingers.toJSON())
+    } else {
+        var isOwner = function (f) { return f.owner == sock.m3_name; };
+        sock.emit("FingerUpdate", fingers.filter(isOwner).toJSON())
+    }
+};
+
 function updateFingers(){
     for (var i = 0; i < connected_sockets.length; i++) {
         var sock = connected_sockets[i];
-        if(sock.m3_admin){
-            sock.emit("FingerUpdate", fingers.toJSON())
-        } else {
-            var filtered = fingers.filter(function(f){ return f.owner == sock.id;});
-            sock.emit("FingerUpdate", filtered.toJSON())
-        }
+        send_finger_state(sock);
     }
 }

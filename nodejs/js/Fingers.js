@@ -5,7 +5,7 @@ function Fingers(fingers){
         delete fingers[id];
     };
     this.is_owner = function(id, owner){
-        return fingers[id] && fingers[id].owner == owner.id;
+        return fingers[id] && fingers[id].owner == owner.m3_name;
     };
 
     this.contains = function(id){
@@ -13,7 +13,7 @@ function Fingers(fingers){
     };
 
     this.add = function(type, id, state, owner){
-        fingers[id] = {type:type, state:state, owner:owner.id};
+        fingers[id] = {type:type, state:state, owner:owner.m3_name};
     };
 
     this.get_finger = function(id){
