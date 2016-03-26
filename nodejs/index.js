@@ -2,6 +2,8 @@ var io_module = require("socket.io");
 var Promise = require("promise");
 var crypto = require("crypto");
 var Encryption = require("./js/encryption");
+var Keys = require("./auth_keys.js");
+var Fingers = require("./js/Fingers.js").Fingers;
 
 var io = io_module.listen(7332);
 var random_delay_max = 0;
@@ -11,6 +13,13 @@ io.on('connection', function(socket){
     challenge_and_verify(socket)
         .then(serve);
 });
+
+function serve(socket){
+    connected_sockets.push(socket);
+    return socket.m3_admin
+       ? serveAdmin(socket)
+       : serveUser(socket);
+}
 
 function injectDebug(socket) {
     var temp_on = socket.on;
@@ -27,55 +36,26 @@ function injectDebug(socket) {
     }.bind(socket);
 }
 
-var private_key = "-----BEGIN RSA PRIVATE KEY-----\
-                MIIBOwIBAAJBAJgC6p1FA2OcaoI2kqg0pPZouWy3ehQ1KZNvhpzm+9hfQNynop1y\
-                Mck1dQ4KPBMG67qvYuHitX/YB3/EMiR1c1UCAwEAAQJAbwmyVy8SSrD3HCbA+h16\
-                YoQc7k0X36r1s7zDl9kiHepSPsM9ZFOJxT+YgKGk3Rn9EiP8iEdFoPXtKsfswj1g\
-                AQIhAOkX7OtTE0dPGa7QV5qhxwRBQEYe2oHaGsBfUbZux2h9AiEApvMo8JOFV9z3\
-                rfC5RmliVMHQO1PIIJvWh0tJSa/6hbkCIAZuMosLb6y38e1wsfoCHItxgWRt1Xlf\
-                mv1To910kOvBAiEAjEniih58u3N8UZbqKafesDhZIbFqhzRM1k3GXPxauUkCIQDQ\
-                lSMNQAIOItXMISpAAck5+e46rf0RGEPD8dQOqVn7Lg==\
-                -----END RSA PRIVATE KEY-----".split(" ").join("");
-var public_key = "-----BEGIN PUBLIC KEY-----\
-                MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAJgC6p1FA2OcaoI2kqg0pPZouWy3ehQ1\
-                KZNvhpzm+9hfQNynop1yMck1dQ4KPBMG67qvYuHitX/YB3/EMiR1c1UCAwEAAQ==\
-                -----END PUBLIC KEY-----".split(" ").join("");
-
 var getUniqueId = function(){
     var id = 0;
     return function(){return id++;}
 }();
 
-var fingers = {};
-
-var http = require("http");
-var myServer = http.createServer(function(request,response){
-   if(request.url == "/debug"){
-       var numfingers = [0,0,0,0];
-       for(var key in fingers){
-           if(fingers.hasOwnProperty(key) && fingers[key] != undefined){
-               numfingers[fingers[key].type] += 1;
-           }
-       }
-       response.end(JSON.stringify(numfingers));
-   } else {
-       response.end(">"+request.url+"<");
-   }
-});
-myServer.listen(7500);
-
+var fingers = new Fingers();
+var connected_sockets = [];
 
 function challenge_and_verify(socket){
-    socket.encryption = new Encryption(private_key, public_key);
-
     return new Promise(function(resolve, reject){
         var challenge = crypto.randomBytes(20).toString('hex');
         socket.emit("Challenge", challenge);
         socket.on("Register", function(reply){
-            var valid = false;
-            try { valid = socket.encryption.decrypt(reply) == challenge; } catch (e) {}
+            var name = reply.name;
+            var message = reply.message;
+
+            var valid = Keys[name] != undefined;
             socket.emit("Registered", valid);
-            if(valid){
+            if(valid) {
+                socket.m3_admin = Keys[name].admin;
                 resolve(socket);
             }
         });
@@ -83,30 +63,52 @@ function challenge_and_verify(socket){
     });
 }
 
-function serve(socket){
-    console.log("Began serving");
+function serveAdmin(socket){
+    return reject_on_disconnect(socket);
+}
+function serveUser(socket){
     socket.on("Finger", function(type){
-        type = socket.encryption.decrypt(type);
         var id = getUniqueId();
         if(1 == type || 2 == type || 3 == type){
-            var msg = {type:type, id:id};
-            socket.emit("RegisterFinger", msg);
-            fingers[id] = {client:socket.id, type:type};
+            fingers.add(type, id, "inactive", socket);
+            updateFingers();
         }
     });
     socket.on("RedactFinger", function(id){
-        id = socket.encryption.decrypt(id);
-        delete fingers[id];
-        socket.emit("RedactedFinger", id);
+        if(!fingers.contains(id)) {
+            socket.emit("RedactedFinger", id);
+            updateFingers();
+        }
+        if (fingers.is_owner(id, socket)) {
+            fingers.remove(id);
+            socket.emit("RedactedFinger", id);
+            updateFingers();
+        }
     });
+    return reject_on_disconnect(socket);
+}
+
+function reject_on_disconnect(socket){
     return new Promise(function(resolve, reject){
-        reject_on_disconnect(socket, reject);
+        socket.on("disconnect", function(){
+            for (var i = 0; i < connected_sockets.length; i++) {
+                if(connected_sockets[i] == socket){
+                    connected_sockets = connected_sockets.splice(i, 1);
+                    break;
+                }
+            }
+            reject();
+        })
     });
 }
-//TODO: PDF support for mobile devices
-
-function reject_on_disconnect(socket, reject){
-    socket.on("disconnect", function(){
-        reject();
-    })
+function updateFingers(){
+    for (var i = 0; i < connected_sockets.length; i++) {
+        var sock = connected_sockets[i];
+        if(sock.m3_admin){
+            sock.emit("FingerUpdate", fingers.toJSON())
+        } else {
+            var filtered = fingers.filter(function(f){ return f.owner == sock.id;});
+            sock.emit("FingerUpdate", filtered.toJSON())
+        }
+    }
 }

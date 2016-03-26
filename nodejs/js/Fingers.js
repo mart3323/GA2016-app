@@ -1,27 +1,52 @@
-function Fingers(){
-    this.fingers = {};
+function Fingers(fingers){
+    var fingers = fingers || {};
 
     this.remove = function(id){
-        delete this.fingers[id];
-    }.bind(this);
+        delete fingers[id];
+    };
+    this.is_owner = function(id, owner){
+        return fingers[id] && fingers[id].owner == owner.id;
+    };
 
-    this.add = function(type, id){
-        this.fingers[id] = {type:type};
-    }.bind(this);
+    this.contains = function(id){
+        return fingers.hasOwnProperty(id);
+    };
+
+    this.add = function(type, id, state, owner){
+        fingers[id] = {type:type, state:state, owner:owner.id};
+    };
 
     this.get_finger = function(id){
-        return this.fingers[id];
-    }.bind(this);
+        return fingers[id];
+    };
+
     this.as_array = function(){
         var out = [];
-        for(var key in this.fingers){
-            if(this.fingers.hasOwnProperty(key)){
-                var temp = this.fingers[key];
+        for(var key in fingers){
+            if(fingers.hasOwnProperty(key)){
+                var temp = fingers[key];
                 temp.id=key;
                 out.push(temp);
             }
         }
         return out;
-    }.bind(this)
-}
+    };
 
+    this.filter = function(predicate){
+        var new_fingers = new Fingers();
+        var fingers = this.as_array();
+        for (var i = 0; i < fingers.length; i++) {
+            var finger = fingers[i];
+            if(predicate(finger)){
+                new_fingers.add(finger.type, finger.id, finger.state, finger.owner)
+            }
+        }
+        return new_fingers;
+    };
+    this.toJSON = function(){
+        return fingers;
+    };
+}
+if(typeof exports != "undefined"){
+    module.exports = {Fingers:Fingers};
+}

@@ -1,25 +1,16 @@
 <link rel="import" href="bower_components/polymer/polymer.html">
-<link rel="import" href="bower_components/iron-icons/iron-icons.html">
+<link rel="import" href="bower_components/paper-icon-button/paper-icon-button.html">
 
-<dom-module id="GA-finger-rules">
+<dom-module id="GA-finger-rules-user">
 
     <style is="custom-style">
         #console .out { color: blue; }
         #console .in { color: green; }
 
-        #f1, #f2, #f3 {
-            color: black;
-        }
-        iron-icon {
-            width:32px;
-            height:32px;
-            margin:8px;
-            color: blue;
-        }
         #fingers td {
             height:48px;
         }
-        iron-icon.redacting {
+        paper-icon-button.redacting {
             color:red !important;
         }
         #console {
@@ -38,29 +29,29 @@
     <script src="../../nodejs/js/Fingers.js"></script>
 
     <template>
-        <span id="connected">←←unknown→→</span>
-        <iron-icon icon="circled-1" id="f1"></iron-icon>
-        <iron-icon icon="circled-2" id="f2"></iron-icon>
-        <iron-icon icon="circled-3" id="f3"></iron-icon>
+        <span id="connected"></span>
+        <paper-icon-button disabled="[[!connected]]" icon="circled-1" id="f1"></paper-icon-button>
+        <paper-icon-button disabled="[[!connected]]" icon="circled-2" id="f2"></paper-icon-button>
+        <paper-icon-button disabled="[[!connected]]" icon="circled-3" id="f3"></paper-icon-button>
         <table id="fingers">
             <tr>
                 <td>
                     <template is="dom-repeat" items="[[fingers_array(fingers)]]" filter="[[filter_fingers_of_type(1)]]">
-                        <iron-icon on-tap="on_redact" icon="circled-1" finger_id="[[item.id]]" class$="[[item.state]]"></iron-icon>
+                        <paper-icon-button on-tap="on_redact" icon="circled-1" finger_id="[[item.id]]" class$="[[item.state]]"></paper-icon-button>
                     </template>
                 </td>
             </tr>
             <tr>
                 <td>
                     <template is="dom-repeat" items="[[fingers_array(fingers)]]" filter="[[filter_fingers_of_type(2)]]">
-                        <iron-icon on-tap="on_redact" icon="circled-2" finger_id="[[item.id]]" class$="[[item.state]]"></iron-icon>
+                        <paper-icon-button on-tap="on_redact" icon="circled-2" finger_id="[[item.id]]" class$="[[item.state]]"></paper-icon-button>
                     </template>
                 </td>
             </tr>
             <tr>
                 <td>
                     <template is="dom-repeat" items="[[fingers_array(fingers)]]" filter="[[filter_fingers_of_type(3)]]">
-                        <iron-icon on-tap="on_redact" icon="circled-3" finger_id="[[item.id]]" class$="[[item.state]]"></iron-icon>
+                        <paper-icon-button on-tap="on_redact" icon="circled-3" finger_id="[[item.id]]" class$="[[item.state]]"></paper-icon-button>
                     </template>
                 </td>
             </tr>
@@ -69,6 +60,9 @@
             </tr>
         </table>
         <div id="console"></div>
+        <div style="display:none;">
+            <content id="content" select="*"></content>
+        </div>
     </template>
 
     <script>
@@ -99,7 +93,7 @@
             var temp_on = socket.on;
             socket.when = function(type, func){
                 temp_on.apply(socket, [type, function(msg){
-                    var element = $("<div>").addClass("out").hide().text("  → "+type+" "+JSON.stringify(msg)).fadeIn();
+                    var element = $("<div>").addClass("out").hide().text("  → "+type+" "+JSON.stringify(msg)).css("color","blue").fadeIn();
                     $console.prepend(element);
                     element.animate({ opacity: 0.25}, 5000);
                     func(msg);
@@ -108,16 +102,16 @@
 
             var temp_emit = socket.emit;
             socket.send = function(type,msg){
-                var element = $("<div>").addClass("out").hide().text(" ←  "+type+" "+JSON.stringify(msg)).fadeIn();
+                var element = $("<div>").addClass("in").hide().text(" ←  "+type+" "+JSON.stringify(msg)).css("color","green").fadeIn();
                 $console.prepend(element);
                 element.animate({ opacity: 0.25}, 5000);
-                temp_emit.apply(socket, [type, encryption.encrypt(msg)]);
+                temp_emit.apply(socket, [type, msg]);
             }.bind(socket);
         }
 
 
         Polymer({
-            is:"GA-finger-rules",
+            is:"GA-finger-rules-user",
 
             getKeys : function(o){
                 return Object.keys(o);
@@ -126,36 +120,46 @@
             properties: {
                 test: {value: {1:1, 2:2, 21:21}},
                 fingers: {
-                    type:Fingers,
+                    type: Fingers,
                     value: new Fingers()
                 },
+                connected: {value:false}
             },
 
             ready: function(){
+
+                var nodes = Polymer.dom(this.$.content).getDistributedNodes();
+                console.log("Distributed nodes");
+                for (var i = 0; i < nodes.length; i++) {
+                    var obj = nodes[i];
+                    console.log(obj);
+                }
+                console.log("------");
+
                 new Promise(function(resolve, reject){
                     var socket = io(IP+":"+PORT, {reconnection:false});
                     injectDebug.apply(this, [socket]);
                     socket.when("error", function(){reject("Failed to connect");});
                     socket.when("connect_error", function(){reject("Failed to connect");});
                     socket.when("Challenge", function(message){
-                        socket.send("Register", message);
+                        socket.send("Register", {name:"LBG_TALLINN", message:message});
                     });
                     $("#connected").text("Connecting...");
                     socket.when("Registered",function(isSuccess){
                         if(isSuccess){
-                            $("#connected").text("Connected");
+                            this.connected = true;
                             resolve(socket);
                         } else {
+                            this.connected = false;
                             $("#connected").text("Failed");
                             reject("Server did not accept signature");
                         }
-                    });
+                    }.bind(this));
                     socket.connect();
                 }.bind(this))
                 .then(function(socket){
                     this.socket = socket;
-                    socket.when("RegisterFinger", this.RegisterFinger.bind(this));
-                    socket.when("RedactedFinger", this.RedactedFinger.bind(this));
+                    socket.when("FingerUpdate", this.UpdateFingers.bind(this));
                 }.bind(this))
                 .catch(function(e){console.warn(e);});
 
@@ -173,15 +177,8 @@
                     return finger.type == n;
                 }
             },
-            RegisterFinger: function(finger){
-                var type = finger.type;
-                var id = finger.id;
-                this.fingers.add(type, id);
-                this.fingers.get_finger(id).state = "redacted";
-                this.notify();
-            },
-            RedactedFinger: function(id){
-                this.fingers.remove(id);
+            UpdateFingers: function(fingers){
+                this.fingers = new Fingers(fingers);
                 this.notify();
             },
             finger: function(n){

@@ -7,24 +7,23 @@
     </target>
 
     <target name="deploy to localhost" depends="vulcanize">
-        <copy todir="../WebInterface/comms/js">
-            <fileset dir="../nodejs/js"/>
+        <copy todir="../out/images">
+            <fileset dir="../WebInterface/GA2016Prototype/images"/>
         </copy>
+        <copy todir="../out/fonts">
+            <fileset dir="../WebInterface/GA2016Prototype/fonts"/>
+        </copy>
+
+        <delete> <fileset dir="/var/www/html/StaticWeb"/> </delete>
+        <delete> <fileset dir="/var/www/html/cgi"/> </delete>
         <copy todir="/var/www/html/StaticWeb">
             <fileset dir="../out"/>
-        </copy>
-        <copy todir="/var/www/html/comms">
-            <fileset dir="comms"/>
         </copy>
         <copy todir="/var/www/html/cgi">
             <fileset dir="../cgi-bin"/>
         </copy>
-        <delete>
-            <fileset dir="../WebInterface/comms/js"/>
-        </delete>
         <chmod file="/var/www/html/cgi/**" perm="755" type="both"/>
         <chmod file="/var/www/html/cgi/google-drive-api/update.py" perm="6755" type="both"/>
         <chmod file="/var/www/html/StaticWeb/**" perm="755" type="both"/>
-        <chmod file="/var/www/html/comms/**" perm="755" type="both"/>
     </target>
 </project>
