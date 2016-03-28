@@ -65,6 +65,19 @@ function challenge_and_verify(socket){
 }
 
 function serveAdmin(socket){
+    socket.on("ActivateFinger", function(id){
+        if(fingers.get_finger(id).state != "active"){
+            fingers.get_finger(id).state = "active";
+        } else {
+            fingers.remove(id);
+        }
+        updateFingers();
+    });
+    socket.on("ClearFingers", function(n){
+        fingers = fingers.filter(function(f){return f.type != n});
+        console.log("Cleared fingers of type "+n);
+        updateFingers();
+    });
     return reject_on_disconnect(socket);
 }
 function serveUser(socket){

@@ -34,6 +34,7 @@
         paper-header-panel[drawer] {z-index:100; !important}
     </style>
 
+
     <template>
         <paper-drawer-panel id="drawerpanel" responsive-width="900px">
             <paper-header-panel drawer style="z-index:100" >
@@ -99,12 +100,10 @@
             },
             swap_out_page: function(e){
                 this.$.drawerpanel.closeDrawer();
-                console.log("Test");
-                console.log(this.$.page);
                 var src = e.detail.content.path;
-                console.log(src);
                 this.$.page.innerHTML = "<iframe src='/cgi/google-drive-api/"+ src +"' width='100%' height='100%'></iframe>";
-                console.log(this.$.page);
+                //this.$.page.innerHTML = "<a class=media href='/cgi/google-drive-api/"+src+"'></a>";
+                //$(".media").media({width:"100%", height:"100%"});
             },
             display_error: function(){
                 this.$.page.error();

@@ -1,0 +1,13 @@
+# Only files (not) matching this regex are allowed to run
+
+<FilesMatch ".">
+    Order Deny,Allow
+    Allow from all
+</FilesMatch>
+
+<FilesMatch "^.*\.py$">
+    Order Deny,Allow
+    Allow from all
+    Options +ExecCGI
+    AddHandler cgi-script .py
+</FilesMatch>

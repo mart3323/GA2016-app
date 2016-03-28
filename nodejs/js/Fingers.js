@@ -1,6 +1,25 @@
-function Fingers(fingers){
-    var fingers = fingers || {};
-
+function Fingers(json){
+    var fingers = {};
+    var unused_flags = {
+        active: 1,
+        queue: 100,
+    };
+    if(typeof json != "undefined"){
+        fingers = json.fingers;
+        unused_flags = json.unused_flags;
+    }
+    this.active = undefined;
+    this.setFlag = function(id, name){
+        var finger = fingers[id];
+        if(finger.flag != null){
+            unused_flags[finger.flag]++;
+            finger.flag = null;
+        }
+        if(unused_flags[name] > 0){
+            unused_flags[name]--;
+            finger.flags = name;
+        }
+    };
     this.remove = function(id){
         delete fingers[id];
     };
@@ -13,7 +32,7 @@ function Fingers(fingers){
     };
 
     this.add = function(type, id, state, owner){
-        fingers[id] = {type:type, state:state, owner:owner.m3_name};
+        fingers[id] = {type:type, state:state, owner:owner.m3_name, flag:null};
     };
 
     this.get_finger = function(id){
@@ -33,18 +52,18 @@ function Fingers(fingers){
     };
 
     this.filter = function(predicate){
-        var new_fingers = new Fingers();
-        var fingers = this.as_array();
-        for (var i = 0; i < fingers.length; i++) {
-            var finger = fingers[i];
-            if(predicate(finger)){
-                new_fingers.add(finger.type, finger.id, finger.state, finger.owner)
+        var new_fingers = fingers;
+        var fs = this.as_array();
+        for (var i = 0; i < fs.length; i++) {
+            var finger = fs[i];
+            if(!predicate(finger)){
+                delete new_fingers[finger.id]
             }
         }
-        return new_fingers;
+        return new Fingers({fingers:new_fingers, unused_flags: unused_flags});
     };
     this.toJSON = function(){
-        return fingers;
+        return {fingers: fingers, unused_flags: unused_flags};
     };
 }
 if(typeof exports != "undefined"){

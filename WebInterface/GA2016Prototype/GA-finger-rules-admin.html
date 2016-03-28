@@ -1,14 +1,18 @@
 <link rel="import" href="bower_components/polymer/polymer.html">
 <link rel="import" href="bower_components/paper-icon-button/paper-icon-button.html">
 
-<dom-module id="GA-finger-rules-user">
+<dom-module id="GA-finger-rules-admin">
 
     <style is="custom-style">
         #console .out { color: blue; }
         #console .in { color: green; }
 
+        #flags td {
+            padding: 8px;
+        }
         #fingers td {
-            color: blue;
+            height:48px;
+            padding:8px;
         }
         paper-icon-button {
             --iron-icon-height: 48px;
@@ -29,43 +33,66 @@
 
     <script src="../extjs/jquery.js"></script>
     <script src="../extjs/socket.io.js"></script>
+    <script src="../../nodejs/js/encryption.js"></script>
     <script src="../../nodejs/js/Fingers.js"></script>
 
     <template>
         <span id="connected"></span>
-        <paper-icon-button disabled="[[!connected]]" icon="GA:circled-1" id="f1"></paper-icon-button>
-        <paper-icon-button disabled="[[!connected]]" icon="GA:circled-2" id="f2"></paper-icon-button>
-        <paper-icon-button disabled="[[!connected]]" icon="GA:circled-3" id="f3"></paper-icon-button>
+        <h3>Admin panel (should see everyone's fingers)</h3>
+        <table id="flags">
+            <tr>
+                <td>Active: <span>[[fingers.unused_flags.active]]</span></td>
+                <td>Queue: <span>[[fingers.unused_flags.queue]]</span></td>
+            </tr>
+        </table>
         <table id="fingers">
             <tr>
                 <td>
-                    <template is="dom-repeat" items="[[fingers_array(fingers)]]" filter="[[filter_fingers_of_type(1)]]">
-                        <paper-icon-button on-tap="on_redact" icon="GA:circled-1" finger_id="[[item.id]]" class$="[[item.state]]"></paper-icon-button>
-                    </template>
+                    <paper-icon-button icon="clear" on-tap="clear_1"></paper-icon-button>
+                    <br/>
+                    Clear
                 </td>
+                <template is="dom-repeat" items="[[fingers_array(fingers)]]" filter="[[filter_fingers_of_type(1)]]">
+                    <td>
+                        <paper-icon-button on-tap="activate" icon="GA:circled-1" finger_id="[[item.id]]" class$="[[item.state]]"></paper-icon-button>
+                        <br/>
+                        <span>[[item.owner]]</span>
+                    </td>
+                </template>
             </tr>
             <tr>
                 <td>
-                    <template is="dom-repeat" items="[[fingers_array(fingers)]]" filter="[[filter_fingers_of_type(2)]]">
-                        <paper-icon-button on-tap="on_redact" icon="GA:circled-2" finger_id="[[item.id]]" class$="[[item.state]]"></paper-icon-button>
-                    </template>
+                    <paper-icon-button icon="clear" on-tap="clear_2"></paper-icon-button>
+                    <br/>
+                    Clear
                 </td>
+                <template is="dom-repeat" items="[[fingers_array(fingers)]]" filter="[[filter_fingers_of_type(2)]]">
+                    <td>
+                        <paper-icon-button on-tap="activate" icon="GA:circled-2" finger_id="[[item.id]]" class$="[[item.state]]"></paper-icon-button>
+                        <br/>
+                        <span>[[item.owner]]</span>
+                    </td>
+                </template>
             </tr>
             <tr>
                 <td>
-                    <template is="dom-repeat" items="[[fingers_array(fingers)]]" filter="[[filter_fingers_of_type(3)]]">
-                        <paper-icon-button on-tap="on_redact" icon="GA:circled-3" finger_id="[[item.id]]" class$="[[item.state]]"></paper-icon-button>
-                    </template>
+                    <paper-icon-button icon="clear" on-tap="clear_3"></paper-icon-button>
+                    <br/>
+                    Clear
                 </td>
+                <template is="dom-repeat" items="[[fingers_array(fingers)]]" filter="[[filter_fingers_of_type(3)]]">
+                    <td>
+                        <paper-icon-button on-tap="activate" icon="GA:circled-3" finger_id="[[item.id]]" class$="[[item.state]]"></paper-icon-button>
+                        <br/>
+                        <span>[[item.owner]]</span>
+                    </td>
+                </template>
             </tr>
             <tr>
                 <td></td> <td></td> <td></td>
             </tr>
         </table>
         <div id="console"></div>
-        <div style="display:none;">
-            <content id="content" select="*"></content>
-        </div>
     </template>
 
     <script>
@@ -73,22 +100,12 @@
 
         var IP = "mart3323-laptop-lm";
         var PORT = 7332;
-        var private_key = "-----BEGIN RSA PRIVATE KEY-----\
-            MIIBOwIBAAJBAJgC6p1FA2OcaoI2kqg0pPZouWy3ehQ1KZNvhpzm+9hfQNynop1y\
-            Mck1dQ4KPBMG67qvYuHitX/YB3/EMiR1c1UCAwEAAQJAbwmyVy8SSrD3HCbA+h16\
-            YoQc7k0X36r1s7zDl9kiHepSPsM9ZFOJxT+YgKGk3Rn9EiP8iEdFoPXtKsfswj1g\
-            AQIhAOkX7OtTE0dPGa7QV5qhxwRBQEYe2oHaGsBfUbZux2h9AiEApvMo8JOFV9z3\
-            rfC5RmliVMHQO1PIIJvWh0tJSa/6hbkCIAZuMosLb6y38e1wsfoCHItxgWRt1Xlf\
-            mv1To910kOvBAiEAjEniih58u3N8UZbqKafesDhZIbFqhzRM1k3GXPxauUkCIQDQ\
-            lSMNQAIOItXMISpAAck5+e46rf0RGEPD8dQOqVn7Lg==\
-            -----END RSA PRIVATE KEY-----".split(" ").join("");
-        var public_key = "-----BEGIN PUBLIC KEY-----\
-            MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAJgC6p1FA2OcaoI2kqg0pPZouWy3ehQ1\
-            KZNvhpzm+9hfQNynop1yMck1dQ4KPBMG67qvYuHitX/YB3/EMiR1c1UCAwEAAQ==\
-            -----END PUBLIC KEY-----".split(" ").join("");
+        var private_key = "test".split(" ").join("");
+        var public_key = "ificate".split(" ").join("");
 
 
         function injectDebug(socket){
+            var encryption = new Encryption(private_key, public_key);
             var $console = $(this.$.console);
             console.log("Debug applied to");
             console.log($console);
@@ -113,7 +130,7 @@
 
 
         Polymer({
-            is:"GA-finger-rules-user",
+            is:"GA-finger-rules-admin",
 
             getKeys : function(o){
                 return Object.keys(o);
@@ -122,29 +139,20 @@
             properties: {
                 test: {value: {1:1, 2:2, 21:21}},
                 fingers: {
-                    type: Fingers,
+                    type:Fingers,
                     value: new Fingers()
                 },
                 connected: {value:false}
             },
 
             ready: function(){
-
-                var nodes = Polymer.dom(this.$.content).getDistributedNodes();
-                console.log("Distributed nodes");
-                for (var i = 0; i < nodes.length; i++) {
-                    var obj = nodes[i];
-                    console.log(obj);
-                }
-                console.log("------");
-
                 new Promise(function(resolve, reject){
                     var socket = io(IP+":"+PORT, {reconnection:false});
                     injectDebug.apply(this, [socket]);
                     socket.when("error", function(){reject("Failed to connect");});
                     socket.when("connect_error", function(){reject("Failed to connect");});
                     socket.when("Challenge", function(message){
-                        socket.send("Register", {name:"LBG_TALLINN", message:message});
+                        socket.send("Register", {name:"SPEAKER", message:message});
                     });
                     $("#connected").text("Connecting...");
                     socket.when("Registered",function(isSuccess){
@@ -159,18 +167,26 @@
                     }.bind(this));
                     socket.connect();
                 }.bind(this))
-                .then(function(socket){
-                    this.socket = socket;
-                    socket.when("FingerUpdate", this.UpdateFingers.bind(this));
-                }.bind(this))
-                .catch(function(e){console.warn(e);});
-
-                $(this.$.f1).on("tap",this.finger.bind(this,1));
-                $(this.$.f2).on("tap",this.finger.bind(this,2));
-                $(this.$.f3).on("tap",this.finger.bind(this,3));
+                        .then(function(socket){
+                            this.socket = socket;
+                            socket.when("FingerUpdate", this.UpdateFingers.bind(this));
+                        }.bind(this))
+                        .catch(function(e){console.warn(e);});
 
             },
 
+            clear_1: function(){
+                this.clear(1);
+            },
+            clear_2: function(){
+                this.clear(2);
+            },
+            clear_3: function(){
+                this.clear(3);
+            },
+            clear: function(n){
+                this.socket.send("ClearFingers", n);
+            },
             fingers_array: function(fingers){
                 return this.fingers.as_array();
             },
@@ -188,13 +204,11 @@
                     this.socket.send("Finger", n);
                 }
             },
-            on_redact: function(e){
+            activate: function(e){
                 var local_target = Polymer.dom(e).localTarget;
                 var id = local_target.finger_id;
-                this.fingers.get_finger(id).state = "redacting";
-                this.notify();
 
-                this.socket.send("RedactFinger", id);
+                this.socket.send("ActivateFinger", id);
             },
             notify: function(){
                 var temp = this.fingers;
