@@ -4,6 +4,22 @@ var crypto = require("crypto");
 var Encryption = require("./js/encryption");
 var Keys = require("./auth_keys.js");
 var Fingers = require("./js/Fingers.js").Fingers;
+var readline = require('readline');
+
+var rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+    terminal: false
+});
+
+rl.on('line', function(line){
+    try{
+        var a = eval(line);
+        console.log(""+a);
+    } catch(e){
+        console.error(e);
+    }
+});
 
 var io = io_module.listen(7332);
 var random_delay_max = 0;
@@ -11,7 +27,8 @@ var random_delay_max = 0;
 io.on('connection', function(socket){
     injectDebug(socket);
     challenge_and_verify(socket)
-        .then(serve);
+        .then(serve)
+    .catch(console.error);
 });
 
 function serve(socket){
@@ -53,10 +70,14 @@ function challenge_and_verify(socket){
             var message = reply.message;
 
             var valid = Keys[name] != undefined;
-            socket.emit("Registered", valid);
+            socket.emit("Registered", true);
             if(valid) {
                 socket.m3_name = name;
                 socket.m3_admin = Keys[name].admin;
+                resolve(socket);
+            } else {
+                socket.m3_name = name;
+                socket.m3_admin = false;
                 resolve(socket);
             }
         });
@@ -65,6 +86,7 @@ function challenge_and_verify(socket){
 }
 
 function serveAdmin(socket){
+    send_finger_state(socket);
     socket.on("ActivateFinger", function(id){
         if(fingers.get_finger(id).state != "active"){
             fingers.get_finger(id).state = "active";
@@ -82,12 +104,11 @@ function serveAdmin(socket){
 }
 function serveUser(socket){
     send_finger_state(socket);
+    console.log("Serving user");
     socket.on("Finger", function(type){
         var id = getUniqueId();
-        if(1 == type || 2 == type || 3 == type){
-            fingers.add(type, id, "inactive", socket);
-            updateFingers();
-        }
+        fingers.add(type, id, "inactive", socket);
+        updateFingers();
     });
     socket.on("RedactFinger", function(id){
         if(!fingers.contains(id)) {
@@ -122,7 +143,9 @@ var send_finger_state = function (sock) {
         sock.emit("FingerUpdate", fingers.toJSON())
     } else {
         var isOwner = function (f) { return f.owner == sock.m3_name; };
-        sock.emit("FingerUpdate", fingers.filter(isOwner).toJSON())
+        console.log("Fingering by sock name "+sock.m3_name);
+        sock.emit("FingerUpdate", fingers.filter(isOwner).toJSON());
+
     }
 };
 

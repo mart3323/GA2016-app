@@ -1,25 +1,10 @@
 function Fingers(json){
     var fingers = {};
-    var unused_flags = {
-        active: 1,
-        queue: 100,
-    };
+    this.types = [1,2,3,"bullshit","technical"];
     if(typeof json != "undefined"){
         fingers = json.fingers;
         unused_flags = json.unused_flags;
     }
-    this.active = undefined;
-    this.setFlag = function(id, name){
-        var finger = fingers[id];
-        if(finger.flag != null){
-            unused_flags[finger.flag]++;
-            finger.flag = null;
-        }
-        if(unused_flags[name] > 0){
-            unused_flags[name]--;
-            finger.flags = name;
-        }
-    };
     this.remove = function(id){
         delete fingers[id];
     };
@@ -52,7 +37,7 @@ function Fingers(json){
     };
 
     this.filter = function(predicate){
-        var new_fingers = fingers;
+        var new_fingers = JSON.parse(JSON.stringify(fingers));
         var fs = this.as_array();
         for (var i = 0; i < fs.length; i++) {
             var finger = fs[i];
@@ -60,10 +45,13 @@ function Fingers(json){
                 delete new_fingers[finger.id]
             }
         }
-        return new Fingers({fingers:new_fingers, unused_flags: unused_flags});
+        return new Fingers({fingers:new_fingers});
     };
     this.toJSON = function(){
-        return {fingers: fingers, unused_flags: unused_flags};
+        return {fingers: fingers};
+    };
+    this.toString = function(){
+        return JSON.stringify(fingers);
     };
 }
 if(typeof exports != "undefined"){

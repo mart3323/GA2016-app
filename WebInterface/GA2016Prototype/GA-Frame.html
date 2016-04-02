@@ -50,22 +50,24 @@
                     <paper-tabs noink no-slide selected="{{page}}" style="width: 100%">
                         <paper-tab>Documents</paper-tab>
                         <paper-tab>Finger rules</paper-tab>
-                        <paper-tab>ITEM THREE</paper-tab>
+                        <!-- <paper-tab>ITEM THREE</paper-tab> -->
                     </paper-tabs>
                 </paper-toolbar>
 
                 <iron-pages selected="[[page]]" class="fit">
                     <iron-page> <div id="page" style="white-space: pre"></div> </iron-page>
-                    <iron-page>
-                        <GA-finger-rules-user>
-                            <div class="user">LGB_TALLINN</div>
-                            <div class="private_key">asd</div>
-                            <div class="public_key">fgh</div>
-                        </GA-finger-rules-user>
-                    </iron-page>
-                    <iron-page>
-                        <GA-finger-rules-admin></GA-finger-rules-admin>
-                    </iron-page>
+                        <iron-page>
+                            <template is="dom-if" if="[[!isAdmin]]">
+                                    <GA-finger-rules-user>
+                                        <div class="user">LGB_TALLINN</div>
+                                        <div class="private_key">asd</div>
+                                        <div class="public_key">fgh</div>
+                                    </GA-finger-rules-user>
+                            </template>
+                            <template is="dom-if" if="[[isAdmin]]">
+                                <GA-finger-rules-admin></GA-finger-rules-admin>
+                            </template>
+                        </iron-page>
                     <paper-toast id="toast" text="initial" duration="1500"></paper-toast>
                 </iron-pages>
 
@@ -84,9 +86,12 @@
                     notify: true,
                     value: "GA2016"
                 },
-                page: {value:1}
+                page: {value:1},
+                isAdmin: {value: false}
             },
-
+            ready: function(){
+                this.isAdmin = window.location.search == "?admin";
+            },
             listeners:{
                 'GA-page-failed': 'display_error',
                 'submenu-opened': 'close_other_menus',

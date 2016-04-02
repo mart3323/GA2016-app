@@ -39,58 +39,23 @@
     <template>
         <span id="connected"></span>
         <h3>Admin panel (should see everyone's fingers)</h3>
-        <table id="flags">
-            <tr>
-                <td>Active: <span>[[fingers.unused_flags.active]]</span></td>
-                <td>Queue: <span>[[fingers.unused_flags.queue]]</span></td>
-            </tr>
-        </table>
         <table id="fingers">
-            <tr>
-                <td>
-                    <paper-icon-button icon="clear" on-tap="clear_1"></paper-icon-button>
-                    <br/>
-                    Clear
-                </td>
-                <template is="dom-repeat" items="[[fingers_array(fingers)]]" filter="[[filter_fingers_of_type(1)]]">
+            <template is="dom-repeat" items="[[fingers.types]]" as="ft">
+                <tr>
                     <td>
-                        <paper-icon-button on-tap="activate" icon="GA:circled-1" finger_id="[[item.id]]" class$="[[item.state]]"></paper-icon-button>
+                        <paper-icon-button icon="clear" on-tap="clear" arg="[[ft]]"></paper-icon-button>
                         <br/>
-                        <span>[[item.owner]]</span>
+                        Clear
                     </td>
-                </template>
-            </tr>
-            <tr>
-                <td>
-                    <paper-icon-button icon="clear" on-tap="clear_2"></paper-icon-button>
-                    <br/>
-                    Clear
-                </td>
-                <template is="dom-repeat" items="[[fingers_array(fingers)]]" filter="[[filter_fingers_of_type(2)]]">
-                    <td>
-                        <paper-icon-button on-tap="activate" icon="GA:circled-2" finger_id="[[item.id]]" class$="[[item.state]]"></paper-icon-button>
-                        <br/>
-                        <span>[[item.owner]]</span>
-                    </td>
-                </template>
-            </tr>
-            <tr>
-                <td>
-                    <paper-icon-button icon="clear" on-tap="clear_3"></paper-icon-button>
-                    <br/>
-                    Clear
-                </td>
-                <template is="dom-repeat" items="[[fingers_array(fingers)]]" filter="[[filter_fingers_of_type(3)]]">
-                    <td>
-                        <paper-icon-button on-tap="activate" icon="GA:circled-3" finger_id="[[item.id]]" class$="[[item.state]]"></paper-icon-button>
-                        <br/>
-                        <span>[[item.owner]]</span>
-                    </td>
-                </template>
-            </tr>
-            <tr>
-                <td></td> <td></td> <td></td>
-            </tr>
+                    <template is="dom-repeat" items="[[fingers_array(fingers)]]" as="f" filter="[[filter_fingers_of_type(ft)]]">
+                        <td>
+                            <paper-icon-button on-tap="activate" icon="[[finger_to_icon(ft)]]" finger_id="[[f.id]]" class$="[[f.state]]"></paper-icon-button>
+                            <br/>
+                            <span>[[f.owner]]</span>
+                        </td>
+                    </template>
+                </tr>
+            </template>
         </table>
         <div id="console"></div>
     </template>
@@ -98,7 +63,7 @@
     <script>
         "use strict";
 
-        var IP = "mart3323-laptop-lm";
+        var IP = "localhost";
         var PORT = 7332;
         var private_key = "test".split(" ").join("");
         var public_key = "ificate".split(" ").join("");
@@ -132,10 +97,9 @@
         Polymer({
             is:"GA-finger-rules-admin",
 
-            getKeys : function(o){
-                return Object.keys(o);
+            finger_to_icon: function (f){
+                return "GA:finger-"+f;
             },
-
             properties: {
                 test: {value: {1:1, 2:2, 21:21}},
                 fingers: {
@@ -175,17 +139,8 @@
 
             },
 
-            clear_1: function(){
-                this.clear(1);
-            },
-            clear_2: function(){
-                this.clear(2);
-            },
-            clear_3: function(){
-                this.clear(3);
-            },
-            clear: function(n){
-                this.socket.send("ClearFingers", n);
+            clear: function(e){
+                this.socket.send("ClearFingers", e.currentTarget.arg);
             },
             fingers_array: function(fingers){
                 return this.fingers.as_array();
