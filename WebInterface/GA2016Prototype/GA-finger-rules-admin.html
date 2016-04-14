@@ -7,12 +7,8 @@
         #console .out { color: blue; }
         #console .in { color: green; }
 
-        #flags td {
-            padding: 8px;
-        }
         #fingers td {
             height:48px;
-            padding:8px;
         }
         paper-icon-button {
             --iron-icon-height: 48px;
@@ -26,6 +22,7 @@
             height: 256px;
             border:1px solid black;
             margin: 8px;
+            margin-top:48px;
             overflow: auto;
         }
 
@@ -37,16 +34,18 @@
     <script src="../../nodejs/js/Fingers.js"></script>
 
     <template>
-        <span id="connected"></span>
-        <h3>Admin panel (should see everyone's fingers)</h3>
+        Connected:<span id="connected">[[connected]]</span>
+        <h3>Admin panel</h3>
         <table id="fingers">
             <template is="dom-repeat" items="[[fingers.types]]" as="ft">
                 <tr>
-                    <td>
-                        <paper-icon-button icon="clear" on-tap="clear" arg="[[ft]]"></paper-icon-button>
-                        <br/>
-                        Clear
-                    </td>
+                    <template is="dom-if" if="[[has_type(ft,fingers)]]">
+                        <td>
+                            <paper-icon-button icon="clear" on-tap="clear" arg="[[ft]]"></paper-icon-button>
+                            <br/>
+                            Clear
+                        </td>
+                    </template>
                     <template is="dom-repeat" items="[[fingers_array(fingers)]]" as="f" filter="[[filter_fingers_of_type(ft)]]">
                         <td>
                             <paper-icon-button on-tap="activate" icon="[[finger_to_icon(ft)]]" finger_id="[[f.id]]" class$="[[f.state]]"></paper-icon-button>
@@ -57,16 +56,36 @@
                 </tr>
             </template>
         </table>
+        <template is="dom-if" if="[[!has_fingers_at_all(fingers)]]">
+            No active fingers right now =)
+        </template>
         <div id="console"></div>
     </template>
 
     <script>
         "use strict";
 
-        var IP = "localhost";
-        var PORT = 7332;
-        var private_key = "test".split(" ").join("");
-        var public_key = "ificate".split(" ").join("");
+        function getCookie(cname) {
+            var name = cname + "=";
+            var ca = document.cookie.split(';');
+            for(var i=0; i<ca.length; i++) {
+                var c = ca[i];
+                while (c.charAt(0)==' ') c = c.substring(1);
+                if (c.indexOf(name) == 0) return atob(c.substring(name.length,c.length));
+            }
+            return "";
+        }
+        function setCookie(cname, cvalue, exdays) {
+            var d = new Date();
+            d.setTime(d.getTime() + (exdays*24*60*60*1000));
+            var expires = "expires="+d.toUTCString();
+            document.cookie = cname + "=" + btoa(cvalue) + "; " + expires;
+        }
+
+        var IP = getCookie("server");
+        var PORT = getCookie("port");
+        var private_key = getCookie("private_key");
+        var public_key = getCookie("public_key");
 
 
         function injectDebug(socket){
@@ -111,8 +130,11 @@
 
             ready: function(){
                 new Promise(function(resolve, reject){
-                    var socket = io(IP+":"+PORT, {reconnection:false});
+                    var socket = io(IP+":"+PORT);
                     injectDebug.apply(this, [socket]);
+                    socket.when("disconnect", function(){this.connected = false;}.bind(this));
+                    socket.when("reconnect", function(){this.connected = true;}.bind(this));
+                    socket.when("connect", function(){this.connected = true;}.bind(this));
                     socket.when("error", function(){reject("Failed to connect");});
                     socket.when("connect_error", function(){reject("Failed to connect");});
                     socket.when("Challenge", function(message){
@@ -131,14 +153,20 @@
                     }.bind(this));
                     socket.connect();
                 }.bind(this))
-                        .then(function(socket){
-                            this.socket = socket;
-                            socket.when("FingerUpdate", this.UpdateFingers.bind(this));
-                        }.bind(this))
-                        .catch(function(e){console.warn(e);});
+                .then(function(socket){
+                    this.socket = socket;
+                    socket.when("FingerUpdate", this.UpdateFingers.bind(this));
+                }.bind(this))
+                .catch(function(e){console.warn(e);});
 
             },
 
+            has_type: function(type){
+                return this.fingers.count(type) > 0;
+            },
+            has_fingers_at_all: function(){
+                return this.fingers.as_array().length > 0;
+            },
             clear: function(e){
                 this.socket.send("ClearFingers", e.currentTarget.arg);
             },

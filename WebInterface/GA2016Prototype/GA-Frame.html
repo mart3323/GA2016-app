@@ -10,6 +10,7 @@
 <link rel="import" href="GA-sidebar-menu.html">
 <link rel="import" href="GA-finger-rules-user.html">
 <link rel="import" href="GA-finger-rules-admin.html">
+<link rel="import" href="GA-notes-page.html">
 
 <dom-module id="GA-Frame">
     <style>
@@ -50,24 +51,33 @@
                     <paper-tabs noink no-slide selected="{{page}}" style="width: 100%">
                         <paper-tab>Documents</paper-tab>
                         <paper-tab>Finger rules</paper-tab>
+                        <paper-tab>Notes</paper-tab>
                         <!-- <paper-tab>ITEM THREE</paper-tab> -->
                     </paper-tabs>
                 </paper-toolbar>
 
                 <iron-pages selected="[[page]]" class="fit">
-                    <iron-page> <div id="page" style="white-space: pre"></div> </iron-page>
-                        <iron-page>
-                            <template is="dom-if" if="[[!isAdmin]]">
-                                    <GA-finger-rules-user>
-                                        <div class="user">LGB_TALLINN</div>
-                                        <div class="private_key">asd</div>
-                                        <div class="public_key">fgh</div>
-                                    </GA-finger-rules-user>
-                            </template>
-                            <template is="dom-if" if="[[isAdmin]]">
-                                <GA-finger-rules-admin></GA-finger-rules-admin>
-                            </template>
-                        </iron-page>
+                    <iron-page>
+                        <div id="page" style="white-space: pre">Inline documents don't work on the tablet unfortunately
+                            <br/>Please download and open the files instead
+                            <br/>( You can find the documents in the panel to your left )
+                        </div>
+                    </iron-page>
+                    <iron-page>
+                        <template is="dom-if" if="[[!isAdmin]]">
+                                <GA-finger-rules-user>
+                                    <div class="user">LGB_TALLINN</div>
+                                    <div class="private_key">asd</div>
+                                    <div class="public_key">fgh</div>
+                                </GA-finger-rules-user>
+                        </template>
+                        <template is="dom-if" if="[[isAdmin]]">
+                            <GA-finger-rules-admin></GA-finger-rules-admin>
+                        </template>
+                    </iron-page>
+                    <iron-page>
+                        <GA-notes-page></GA-notes-page>
+                    </iron-page>
                     <paper-toast id="toast" text="initial" duration="1500"></paper-toast>
                 </iron-pages>
 

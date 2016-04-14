@@ -1,0 +1,41 @@
+<link rel="import" href="bower_components/polymer/polymer.html">
+<link rel="import" href="bower_components/paper-input/paper-textarea.html">
+
+<dom-module id="GA-notes-page">
+
+    <style is="custom-style"></style>
+
+    <template>
+        <paper-textarea label="Feel free to take notes in this textarea.., they will still be here even if you refresh" value="{{text}}" on-change="save"></paper-textarea>
+    </template>
+
+    <script>
+        "use strict";
+        function getCookie(cname) {
+            var name = cname + "=";
+            var ca = document.cookie.split(';');
+            for(var i=0; i<ca.length; i++) {
+                var c = ca[i];
+                while (c.charAt(0)==' ') c = c.substring(1);
+                if (c.indexOf(name) == 0) return atob(c.substring(name.length,c.length));
+            }
+            return "";
+        }
+        function setCookie(cname, cvalue, exdays) {
+            var d = new Date();
+            d.setTime(d.getTime() + (exdays*24*60*60*1000));
+            var expires = "expires="+d.toUTCString();
+            document.cookie = cname + "=" + btoa(cvalue) + "; " + expires;
+        }
+        Polymer({
+            is:"GA-notes-page",
+
+            properties: {
+                text: {value: getCookie("saved-notes")}
+            },
+            save: function(){
+                setCookie("saved-notes", this.text, 1000);
+            }
+        })
+    </script>
+</dom-module>

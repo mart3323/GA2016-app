@@ -1,6 +1,12 @@
 function Fingers(json){
     var fingers = {};
-    this.types = [1,2,3,"bullshit","technical"];
+    this.types = [1,2,3,"bullshit","technical","clarification","yes","no"];
+
+    var getUniqueId = function(){
+        var id = 0;
+        return function(){return id++;}
+    }();
+
     if(typeof json != "undefined"){
         fingers = json.fingers;
         unused_flags = json.unused_flags;
@@ -16,8 +22,10 @@ function Fingers(json){
         return fingers.hasOwnProperty(id);
     };
 
-    this.add = function(type, id, state, owner){
-        fingers[id] = {type:type, state:state, owner:owner.m3_name, flag:null};
+    this.add = function(type, state, owner){
+        var id = getUniqueId();
+        fingers[id] = {type:type, state:state, owner:owner.m3_name};
+        return id;
     };
 
     this.get_finger = function(id){
@@ -53,6 +61,17 @@ function Fingers(json){
     this.toString = function(){
         return JSON.stringify(fingers);
     };
+    this.count = function(type){
+        var sum = 0;
+        var fingers = this.as_array();
+        for (var i = 0; i < fingers.length; i++) {
+            var finger = fingers[i];
+            if(finger.type == type){
+                sum++;
+            }
+        }
+        return sum;
+    }
 }
 if(typeof exports != "undefined"){
     module.exports = {Fingers:Fingers};

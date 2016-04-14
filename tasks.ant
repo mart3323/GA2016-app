@@ -4,16 +4,16 @@
             <arg value="-c" />
             <arg value="vulcanize GA2016Prototype/index.html --inline-css --inline-scripts --strip-comments > ../out/index.html" />
         </exec>
-    </target>
-
-    <target name="deploy to localhost" depends="vulcanize">
         <copy todir="../out/images">
             <fileset dir="../WebInterface/GA2016Prototype/images"/>
         </copy>
         <copy todir="../out/fonts">
             <fileset dir="../WebInterface/GA2016Prototype/fonts"/>
         </copy>
+    </target>
 
+
+    <target name="deploy to localhost" depends="vulcanize">
         <delete> <fileset dir="/var/www/html/StaticWeb"/> </delete>
         <delete> <fileset dir="/var/www/html/cgi"/> </delete>
         <copy todir="/var/www/html/StaticWeb">

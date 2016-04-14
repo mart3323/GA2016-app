@@ -8,14 +8,14 @@
         #console .out { color: blue; }
         #console .in { color: green; }
 
-        #fingers td {
-            color: blue;
-        }
         paper-icon-button {
             --iron-icon-height: 48px;
             --iron-icon-width: 48px;
         }
-        paper-icon-button.active {
+        #fingers td paper-icon-button {
+            color: blue;
+        }
+        #fingers td paper-icon-button.active {
             color:green !important;
         }
         #console {
@@ -23,7 +23,12 @@
             height: 256px;
             border:1px solid black;
             margin: 8px;
+            margin-top:48px;
             overflow: auto;
+        }
+        #connected {
+            margin: 24px;
+            font-size:1.5em;
         }
 
     </style>
@@ -33,53 +38,52 @@
     <script src="../../nodejs/js/Fingers.js"></script>
 
     <template>
-        <div id="form">
-            <span id="connected"></span>
-            <paper-input id="name" placeholder="name"></paper-input>
-            <paper-button on-tap="startServer" style="width:300px;">Connect</paper-button>
-        </div>
-        <div id="controls" style="display:none;">
-            <template is="dom-repeat" items="[[fingers.types]]" as="ft">
-                <paper-icon-button disabled="[[!connected]]" icon="[[finger_to_icon(ft)]]" on-tap="_finger" arg="[[ft]]"></paper-icon-button>
-            </template>
+        <div id="connected">[[state]]</div>
+        <template is="dom-repeat" items="[[fingers.types]]" as="ft">
+            <paper-icon-button disabled="[[!canFinger(connected,pending)]]" icon="[[finger_to_icon(ft)]]" on-tap="_finger" arg="[[ft]]"></paper-icon-button>
+        </template>
 
-            <table id="fingers">
-                <template is="dom-repeat" items="[[fingers.types]]" as="ft">
-                    <tr>
-                        <template is="dom-repeat" items="[[fingers_array(fingers)]]" as="f" filter="[[filter_fingers_of_type(ft)]]">
-                            <td>
-                                <paper-icon-button on-tap="on_redact" icon="[[finger_to_icon(ft)]]" finger_id="[[f.id]]" class$="[[f.state]]"></paper-icon-button>
-                            </td>
-                        </template>
-                    </tr>
-                </template>
-            </table>
+        <table id="fingers">
+            <template is="dom-repeat" items="[[fingers.types]]" as="ft">
+                <tr>
+                    <template is="dom-repeat" items="[[fingers_array(fingers)]]" as="f" filter="[[filter_fingers_of_type(ft)]]">
+                        <td>
+                            <paper-icon-button on-tap="on_redact" icon="[[finger_to_icon(ft)]]" finger_id="[[f.id]]" class$="[[f.state]]"></paper-icon-button>
+                            <br/>
+                            <span>[[f.state]]</span>
+                        </td>
+                    </template>
+                </tr>
+            </template>
+        </table>
+        <div style="display:none;">
             <div id="console"></div>
-            <div style="display:none;">
-                <content id="content" select="*"></content>
-            </div>
         </div>
     </template>
 
     <script>
         "use strict";
 
-        var IP = "localhost";
-        var PORT = 7332;
-        var private_key = "-----BEGIN RSA PRIVATE KEY-----\
-            MIIBOwIBAAJBAJgC6p1FA2OcaoI2kqg0pPZouWy3ehQ1KZNvhpzm+9hfQNynop1y\
-            Mck1dQ4KPBMG67qvYuHitX/YB3/EMiR1c1UCAwEAAQJAbwmyVy8SSrD3HCbA+h16\
-            YoQc7k0X36r1s7zDl9kiHepSPsM9ZFOJxT+YgKGk3Rn9EiP8iEdFoPXtKsfswj1g\
-            AQIhAOkX7OtTE0dPGa7QV5qhxwRBQEYe2oHaGsBfUbZux2h9AiEApvMo8JOFV9z3\
-            rfC5RmliVMHQO1PIIJvWh0tJSa/6hbkCIAZuMosLb6y38e1wsfoCHItxgWRt1Xlf\
-            mv1To910kOvBAiEAjEniih58u3N8UZbqKafesDhZIbFqhzRM1k3GXPxauUkCIQDQ\
-            lSMNQAIOItXMISpAAck5+e46rf0RGEPD8dQOqVn7Lg==\
-            -----END RSA PRIVATE KEY-----".split(" ").join("");
-        var public_key = "-----BEGIN PUBLIC KEY-----\
-            MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAJgC6p1FA2OcaoI2kqg0pPZouWy3ehQ1\
-            KZNvhpzm+9hfQNynop1yMck1dQ4KPBMG67qvYuHitX/YB3/EMiR1c1UCAwEAAQ==\
-            -----END PUBLIC KEY-----".split(" ").join("");
+        function getCookie(cname) {
+            var name = cname + "=";
+            var ca = document.cookie.split(';');
+            for(var i=0; i<ca.length; i++) {
+                var c = ca[i];
+                while (c.charAt(0)==' ') c = c.substring(1);
+                if (c.indexOf(name) == 0) return atob(c.substring(name.length,c.length));
+            }
+            return "";
+        }
+        function setCookie(cname, cvalue, exdays) {
+            var d = new Date();
+            d.setTime(d.getTime() + (exdays*24*60*60*1000));
+            var expires = "expires="+d.toUTCString();
+            document.cookie = cname + "=" + btoa(cvalue) + "; " + expires;
+        }
 
+        var IP = getCookie("server");
+        var PORT = getCookie("port");
+        var minimum_finger_interval_ms = 5000;
 
         function injectDebug(socket){
             var $console = $(this.$.console);
@@ -114,45 +118,53 @@
                     type: Fingers,
                     value: new Fingers()
                 },
-                connected: {value:false},
-                started: {value: false}
+                state: {value: "Disconnected"},
+                pending: {value: false},
+                connected: {computed: "isConnected(state)"}
             },
-
+            ready: function(){
+                this.startServer();
+            },
+            isConnected: function(){
+                return this.state == "";
+            },
             finger_to_icon: function (f){
                 return "GA:finger-"+f;
             },
             startServer: function(){
-                if(this.started) return;
-                $(this.$.form).hide();
-                $(this.$.controls).show();
-                var name = this.$.name.value;
+                var name = getCookie("username");
+                var pass = getCookie("password");
 
                 new Promise(function(resolve, reject){
-                    var socket = io(IP+":"+PORT, {reconnection:false});
+                    var socket = io(IP+":"+PORT);
                     injectDebug.apply(this, [socket]);
+                    socket.when("disconnect", function(){this.state = "Lost connection, reconnecting..";}.bind(this));
+                    socket.when("reconnect", function(){this.state = "";}.bind(this));
+                    socket.when("connect", function(){this.state = "";}.bind(this));
                     socket.when("error", function(){reject("Failed to connect");});
                     socket.when("connect_error", function(){reject("Failed to connect");});
                     socket.when("Challenge", function(message){
-                        socket.send("Register", {name:name, message:message});
+                        socket.send("Register", {name:name, pass:pass});
                     });
-                    $("#connected").text("Connecting...");
+                    this.state = "Connecting...";
                     socket.when("Registered",function(isSuccess){
                         if(isSuccess){
-                            this.connected = true;
+                            this.state = "";
                             resolve(socket);
                         } else {
-                            this.connected = false;
-                            $("#connected").text("Failed");
-                            reject("Server did not accept signature");
+                            reject("This device has not been properly registered, please ask an organiser for help!");
                         }
                     }.bind(this));
                     socket.connect();
                 }.bind(this))
                 .then(function(socket){
+                    this.state = "";
                     this.socket = socket;
                     socket.when("FingerUpdate", this.UpdateFingers.bind(this));
                 }.bind(this))
-                .catch(function(e){console.warn(e);});
+                .catch(function(e){
+                    this.state = e;
+                }.bind(this));
             },
             fingers_array: function(fingers){
                 return this.fingers.as_array();
@@ -171,6 +183,8 @@
             },
             finger: function(n){
                 this.socket.send("Finger", n);
+                this.set("pending",true);
+                setTimeout(this.set.bind(this,"pending",false), minimum_finger_interval_ms);
             },
             on_redact: function(e){
                 var local_target = Polymer.dom(e).localTarget;
@@ -184,6 +198,9 @@
                 var temp = this.fingers;
                 this.set("fingers",new Fingers());
                 this.set("fingers",temp);
+            },
+            canFinger: function(){
+                return this.connected && !this.pending;
             }
         })
     </script>
